@@ -1,29 +1,49 @@
-# Trenes en Vivo · actualiza cada noche los nombres de estaciones y los
-# recorridos (origen, destino, línea) a partir de los horarios públicos de Renfe.
-# Guarda el resultado en la carpeta "datos/" del repositorio.
+# Trenes en Vivo · prepara cada noche los datos de Renfe (estaciones, recorridos
+# y salidas de cada estación) y publica la web en GitHub Pages.
+# Requisito: Settings → Pages → Source: "GitHub Actions".
 
 name: Actualizar datos de Renfe
 
 on:
   schedule:
-    - cron: "37 1 * * *"   # todos los días a las 02:37 (hora peninsular en invierno)
+    - cron: "37 1 * * *"   # cada noche, hacia las 02:37 (hora peninsular en invierno)
+  push:
+    branches: [main]        # al subir un index.html nuevo, se publica solo
   workflow_dispatch:        # botón "Run workflow" para lanzarlo a mano
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  datos:
+  publicar:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Descargar horarios y generar datos
+      - name: Copiar la web
         run: |
-          mkdir -p datos
+          mkdir -p _site
+          rsync -a --exclude='.*' --exclude='_site' --exclude='datos' ./ _site/
+
+      - name: Descargar horarios de Renfe y generar datos
+        run: |
           python3 - <<'PY'
-          import csv, io, json, ssl, urllib.request, zipfile, datetime as dt
+          import csv, io, json, os, ssl, urllib.request, urllib.error, zipfile, datetime as dt
+          from collections import defaultdict
           from zoneinfo import ZoneInfo
+
+          TZ = ZoneInfo("Europe/Madrid")
+          OUT = "_site/datos"
+          os.makedirs(OUT + "/salidas", exist_ok=True)
 
           FUENTES = {
               "ld":  "https://ssl.renfe.com/gtransit/Fichero_AV_LD/google_transit.zip",
@@ -34,12 +54,9 @@ jobs:
               req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 trenes-en-vivo"})
               try:
                   return urllib.request.urlopen(req, timeout=180).read()
-              except ssl.SSLError:
-                  # El certificado de ssl.renfe.com a veces falla la verificación; son datos públicos.
-                  ctx = ssl._create_unverified_context()
-                  return urllib.request.urlopen(req, timeout=180, context=ctx).read()
-              except urllib.error.URLError as e:
-                  if isinstance(e.reason, ssl.SSLError):
+              except (ssl.SSLError, urllib.error.URLError) as e:
+                  if isinstance(e, ssl.SSLError) or isinstance(getattr(e, "reason", None), ssl.SSLError):
+                      # El certificado de ssl.renfe.com a veces falla la verificación; son datos públicos.
                       ctx = ssl._create_unverified_context()
                       return urllib.request.urlopen(req, timeout=180, context=ctx).read()
                   raise
@@ -50,26 +67,6 @@ jobs:
                   for fila in csv.DictReader(texto):
                       yield {(k or "").strip(): (v or "").strip() for k, v in fila.items()}
 
-          hoy = dt.datetime.now(ZoneInfo("Europe/Madrid")).date()
-          dias = [hoy, hoy + dt.timedelta(days=1)]
-
-          def servicios_activos(z):
-              nombres = set(z.namelist())
-              activos = set()
-              if "calendar.txt" in nombres:
-                  claves = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
-                  for r in filas(z, "calendar.txt"):
-                      ini = dt.datetime.strptime(r["start_date"], "%Y%m%d").date()
-                      fin = dt.datetime.strptime(r["end_date"], "%Y%m%d").date()
-                      if any(ini <= d <= fin and r.get(claves[d.weekday()]) == "1" for d in dias):
-                          activos.add(r["service_id"])
-              if "calendar_dates.txt" in nombres:
-                  fechas = {d.strftime("%Y%m%d") for d in dias}
-                  for r in filas(z, "calendar_dates.txt"):
-                      if r["date"] in fechas:
-                          (activos.add if r["exception_type"] == "1" else activos.discard)(r["service_id"])
-              return activos
-
           MENORES = {"De", "Del", "La", "Las", "Los", "El", "Y", "I", "A", "En"}
           def bonito(n):
               if not n.isupper():
@@ -77,16 +74,55 @@ jobs:
               partes = n.title().split(" ")
               return " ".join(p.lower() if i and p in MENORES else p for i, p in enumerate(partes))
 
+          ahora = dt.datetime.now(TZ)
+          hoy = ahora.date()
+          DIAS = [hoy - dt.timedelta(days=1), hoy, hoy + dt.timedelta(days=1)]
+          medianoche = lambda d: int(dt.datetime(d.year, d.month, d.day, tzinfo=TZ).timestamp() // 60)
+          DESDE, HASTA = medianoche(hoy), medianoche(hoy + dt.timedelta(days=2))
+
+          def servicios_por_dia(z):
+              nombres = set(z.namelist())
+              act = {d: set() for d in DIAS}
+              if "calendar.txt" in nombres:
+                  claves = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
+                  for r in filas(z, "calendar.txt"):
+                      ini = dt.datetime.strptime(r["start_date"], "%Y%m%d").date()
+                      fin = dt.datetime.strptime(r["end_date"], "%Y%m%d").date()
+                      for d in DIAS:
+                          if ini <= d <= fin and r.get(claves[d.weekday()]) == "1":
+                              act[d].add(r["service_id"])
+              if "calendar_dates.txt" in nombres:
+                  por_fecha = {d.strftime("%Y%m%d"): d for d in DIAS}
+                  for r in filas(z, "calendar_dates.txt"):
+                      d = por_fecha.get(r["date"])
+                      if d:
+                          (act[d].add if r["exception_type"] == "1" else act[d].discard)(r["service_id"])
+              return act
+
+          def minutos(t):
+              try:
+                  h, m = t.split(":")[:2]
+                  return int(h) * 60 + int(m)
+              except ValueError:
+                  return None
+
           estaciones, rutas, ruta_idx, ruta_id = {}, [], {}, {}
-          salida = {"ld": {}, "cer": {}, "cerNum": {}}
+          patrones, pat_idx = [], {}
+          salidas = defaultdict(list)
+          viajes_out = {"ld": {}, "cer": {}, "cerNum": {}}
 
           for clave, url in FUENTES.items():
-              print("Descargando", url)
+              print("Descargando", url, flush=True)
               z = zipfile.ZipFile(io.BytesIO(descargar(url)))
+              tipo = 0 if clave == "ld" else 1
 
               for r in filas(z, "stops.txt"):
+                  try:
+                      lat, lon = round(float(r["stop_lat"]), 5), round(float(r["stop_lon"]), 5)
+                  except (KeyError, ValueError):
+                      lat = lon = None
                   if r.get("stop_name"):
-                      estaciones[r["stop_id"]] = bonito(r["stop_name"])
+                      estaciones[r["stop_id"]] = [bonito(r["stop_name"]), lat, lon]
 
               for r in filas(z, "routes.txt"):
                   k = clave + ":" + r["route_id"]
@@ -95,52 +131,72 @@ jobs:
                   if clave == "cer":
                       ruta_id[r["route_id"]] = ruta_idx[k]
 
-              activos = servicios_activos(z)
-              print(clave, "servicios activos hoy/mañana:", len(activos))
+              act = servicios_por_dia(z)
+              sin_calendario = not any(act.values())
               viajes = {}
               for r in filas(z, "trips.txt"):
-                  if activos and r["service_id"] not in activos:
-                      continue
-                  viajes[r["trip_id"]] = [ruta_idx.get(clave + ":" + r["route_id"], -1), None, None, 10**9, -1,
-                                          r.get("trip_headsign", ""), r.get("trip_short_name", "")]
+                  fechas = [hoy] if sin_calendario else [d for d in DIAS if r["service_id"] in act[d]]
+                  if fechas:
+                      viajes[r["trip_id"]] = (ruta_idx.get(clave + ":" + r["route_id"], -1),
+                                              r.get("trip_headsign", ""), r.get("trip_short_name", ""), fechas)
 
+              paradas = defaultdict(list)
               for r in filas(z, "stop_times.txt"):
-                  v = viajes.get(r["trip_id"])
-                  if not v:
-                      continue
-                  try:
-                      s = int(r["stop_sequence"])
-                  except ValueError:
-                      continue
-                  if s < v[3]: v[3], v[1] = s, r["stop_id"]
-                  if s > v[4]: v[4], v[2] = s, r["stop_id"]
+                  if r["trip_id"] in viajes:
+                      try:
+                          seq = int(r["stop_sequence"])
+                      except ValueError:
+                          continue
+                      paradas[r["trip_id"]].append((seq, r["stop_id"], r.get("departure_time") or r.get("arrival_time", "")))
 
-              for tid, (ri, ori, des, _, _, cartel, num) in viajes.items():
-                  fila = [ri, ori or "", des or "", cartel]
+              for tid, (ri, cartel, num, fechas) in viajes.items():
+                  ps = sorted(paradas.get(tid, []))
+                  if len(ps) < 2:
+                      continue
+                  ids = tuple(p[1] for p in ps)
+                  if ids not in pat_idx:
+                      pat_idx[ids] = len(patrones)
+                      patrones.append(list(ids))
+                  fila = [ri, ids[0], ids[-1], cartel, pat_idx[ids]]
                   if clave == "ld":
-                      n = (num or tid[:5]).lstrip("0")
-                      salida["ld"].setdefault(n, fila)
+                      clave_tren = (num or tid[:5]).lstrip("0")
+                      viajes_out["ld"].setdefault(clave_tren, fila)
                   else:
-                      salida["cer"][tid] = fila
+                      clave_tren = tid
+                      viajes_out["cer"][tid] = fila
                       if num:
-                          salida["cerNum"].setdefault(tid[:2] + "|" + num.lstrip("0"), fila)
-              print(clave, "viajes guardados:", len(viajes))
+                          viajes_out["cerNum"].setdefault(tid[:2] + "|" + num.lstrip("0"), fila)
+                  numero = (num or (tid[:5] if clave == "ld" else "")).lstrip("0")
+                  for fecha in fechas:
+                      base = medianoche(fecha)
+                      for _, parada, hora in ps[:-1]:          # en la última parada no se sale
+                          m = minutos(hora)
+                          if m is None:
+                              continue
+                          t = base + m
+                          if DESDE <= t < HASTA:
+                              salidas[parada].append([t, tipo, clave_tren, ri, ids[-1], cartel, numero])
+              print(clave, "viajes:", len(viajes), "patrones acumulados:", len(patrones), flush=True)
 
-          salida["rutas"] = rutas
-          salida["rutaId"] = ruta_id
-          salida["generado"] = dt.datetime.now(ZoneInfo("Europe/Madrid")).isoformat(timespec="minutes")
+          for parada, lista in salidas.items():
+              lista.sort(key=lambda x: x[0])
+              nombre = "".join(c for c in parada if c.isalnum() or c in "-_")
+              with open(f"{OUT}/salidas/{nombre}.json", "w", encoding="utf-8") as f:
+                  json.dump(lista, f, ensure_ascii=False, separators=(",", ":"))
 
-          with open("datos/viajes.json", "w", encoding="utf-8") as f:
-              json.dump(salida, f, ensure_ascii=False, separators=(",", ":"))
-          with open("datos/estaciones.json", "w", encoding="utf-8") as f:
+          viajes_out.update(rutas=rutas, rutaId=ruta_id, patrones=patrones,
+                            conSalidas=sorted(salidas.keys()),
+                            generado=ahora.isoformat(timespec="minutes"))
+          with open(f"{OUT}/viajes.json", "w", encoding="utf-8") as f:
+              json.dump(viajes_out, f, ensure_ascii=False, separators=(",", ":"))
+          with open(f"{OUT}/estaciones.json", "w", encoding="utf-8") as f:
               json.dump(estaciones, f, ensure_ascii=False, separators=(",", ":"))
-          print("Estaciones:", len(estaciones))
+          print("Estaciones:", len(estaciones), "con salidas:", len(salidas))
           PY
 
-      - name: Guardar en el repositorio
-        run: |
-          git config user.name "datos-renfe"
-          git config user.email "actions@users.noreply.github.com"
-          git add datos
-          git diff --cached --quiet || git commit -m "Datos de Renfe del $(date +%F)"
-          git push
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
