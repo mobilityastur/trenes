@@ -9,7 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Trenes">
 <meta name="theme-color" content="#14181f">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%2314181f'/%3E%3Cpath d='M40 120 Q90 30 140 120' stroke='%23f2a516' stroke-width='12' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='90' cy='68' r='16' fill='%2336c2b4'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="icon" type="image/png" href="icono-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
@@ -154,6 +156,23 @@ button.row{cursor:pointer}
 .badge{display:inline-block;padding:0 6px;border-radius:5px;font:600 12px/18px var(--mono);color:#fff;background:var(--ok)}
 .badge.warn{background:var(--warn)} .badge.bad{background:var(--late)}
 .pop .alink{margin-top:6px;width:100%;border:1px solid var(--late);color:var(--late);background:transparent;border-radius:8px;padding:6px;font-weight:600;cursor:pointer}
+.install{position:fixed;z-index:1001;left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));
+  bottom:calc(env(safe-area-inset-bottom,0px) + 150px);padding:12px 14px;display:flex;gap:10px;align-items:flex-start}
+.install img{width:44px;height:44px;border-radius:10px;flex:none}
+.install div{flex:1;min-width:0;font-size:13px}
+.install b{display:block;font-size:14px;margin-bottom:2px}
+.install .x{border:0;background:none;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:0 2px}
+.install .go{margin-top:8px;border:0;border-radius:8px;background:var(--ld);color:#14181f;font-weight:600;padding:7px 12px;cursor:pointer}
+.sec{margin:18px 0 6px;font:700 15px var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.sec:first-child{margin-top:4px}
+.share{display:flex;gap:8px;align-items:center}
+.share code{flex:1;min-width:0;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:13px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;user-select:all;-webkit-user-select:all}
+.share button,.btn2{border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:10px;padding:9px 12px;font-weight:600;cursor:pointer}
+.legend{display:grid;grid-template-columns:34px 1fr;gap:10px 8px;align-items:center;font-size:13.5px}
+.legend .k{position:relative;height:26px;display:flex;align-items:center;justify-content:center}
+.legend .k .tm{position:absolute;left:50%;top:50%}
+details.adv{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+details.adv summary{cursor:pointer;color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion:reduce){.tm.moving::before{animation:none;opacity:.25}}
 </style>
 </head>
@@ -204,13 +223,41 @@ button.row{cursor:pointer}
 </div>
 
 <div class="card sheet" id="settingsSheet" hidden>
-  <div class="sheet-head"><h2>Ajustes</h2><button class="close" data-close>Cerrar</button></div>
+  <div class="sheet-head"><h2>Trenes en vivo<small id="verInfo"></small></h2><button class="close" data-close>Cerrar</button></div>
   <div class="sheet-body">
-    <label for="proxy">Dirección del intermediario</label>
-    <input id="proxy" placeholder="https://trenes.tu-nombre.workers.dev/?url=" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <button class="primary" id="save">Guardar</button>
-    <p class="note" id="datosInfo"></p>
+    <div class="sec">Compartir con la familia</div>
+    <div class="share"><code id="appUrl"></code><button id="shareBtn">Compartir</button></div>
+    <p class="note">Quien abra el enlace la tiene lista, sin configurar nada. Para tenerla como una app más: en Safari, botón Compartir → «Añadir a pantalla de inicio».</p>
+
+    <div class="sec">Qué significa cada cosa</div>
+    <div class="legend">
+      <div class="k"><div class="tm ld moving"><div class="dot"></div></div></div><div>Alta velocidad, larga y media distancia</div>
+      <div class="k"><div class="tm cer moving"><div class="dot"></div></div></div><div>Cercanías y Rodalies</div>
+      <div class="k"><div class="tm cer stopped"><div class="dot"></div></div></div><div>Tren parado en una estación (sin halo y más pequeño)</div>
+      <div class="k"><span class="badge warn">+9′</span></div><div>Minutos de retraso (en rojo a partir de 15)</div>
+      <div class="k"><span style="color:var(--fav);font-size:18px">★</span></div><div>Tus trenes favoritos</div>
+    </div>
+    <p class="note">Toca un tren para ver su recorrido y su retraso. Escribe una estación en el buscador para ver sus próximas salidas. Los trenes se actualizan cada 20 segundos.</p>
+
+    <div class="sec">Datos</div>
+    <p class="note" id="datosInfo" style="margin-top:0"></p>
+    <p class="note">Fuente: datos abiertos de Renfe (CC BY 4.0). Mapa: © colaboradores de OpenStreetMap.</p>
+
+    <details class="adv">
+      <summary>Avanzado</summary>
+      <label for="proxy">Dirección del intermediario</label>
+      <input id="proxy" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="primary" id="save">Guardar</button>
+      <button class="btn2" id="resetProxy" style="margin-top:8px;width:100%">Volver a la dirección por defecto</button>
+    </details>
   </div>
+</div>
+
+<div class="card install" id="install" hidden>
+  <img src="icono-180.png" alt="">
+  <div><b>Ten la app a mano</b><span id="installTxt"></span>
+    <br><button class="go" id="installGo" hidden>Instalar</button></div>
+  <button class="x" id="installX" aria-label="Cerrar aviso">×</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -224,7 +271,9 @@ const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32'
   '62':'Santander','70':'Zaragoza'};
 
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
-let proxy = store.get('proxy') || '';
+const APP_VERSION = '1.6';
+const PROXY_DEFAULT = 'https://trenes.navamar2002.workers.dev/?url=';
+let proxy = store.get('proxy') || PROXY_DEFAULT;
 const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '0'};
 let favs = (()=>{ try{ return JSON.parse(store.get('favs')||'[]') }catch{ return [] } })();   // [{k, n, kind}]
 const $ = id => document.getElementById(id);
@@ -612,7 +661,7 @@ async function refresh(){
   const now = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   const total = markers.ld.size + markers.cer.size;
   st.className = 'status' + (ok ? '' : ' err');
-  st.innerHTML = '<span class="dot"></span>' + (!ok ? 'Sin conexión con Renfe · reintento en 20 s'
+  st.innerHTML = '<span class="dot"></span>' + (!ok ? (navigator.onLine === false ? 'Sin conexión a internet' : 'Sin conexión con Renfe · reintento en 20 s')
     : total === 0 ? `Ningún tren circulando ahora · ${now}` : `Actualizado ${now}`);
   $('banner').hidden = ok || !!proxy;
 }
@@ -658,13 +707,41 @@ $('locate').onclick = () => {
 };
 function openSheet(id){ document.querySelectorAll('.sheet').forEach(s => s.hidden = s.id !== id); }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.sheet').hidden = true);
+const APP_URL = location.origin + location.pathname.replace(/index\.html$/, '');
 $('settingsBtn').onclick = () => {
   $('proxy').value = proxy;
+  $('appUrl').textContent = APP_URL.replace(/^https?:\/\//, '');
+  $('verInfo').textContent = 'Versión ' + APP_VERSION;
   $('datosInfo').textContent = VJ ? `Estaciones, recorridos y horarios actualizados el ${new Date(VJ.generado).toLocaleString('es-ES',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}.`
     : 'Aún no hay estaciones ni horarios: falta que se ejecute la tarea «Actualizar datos de Renfe» en GitHub.';
   openSheet('settingsSheet');
 };
-$('save').onclick = () => { proxy = $('proxy').value.trim(); store.set('proxy', proxy); $('settingsSheet').hidden = true; tick = 0; refresh(); };
+$('shareBtn').onclick = async () => {
+  const data = {title:'Trenes en Vivo', text:'Mira dónde van los trenes de Renfe en tiempo real:', url:APP_URL};
+  try { if (navigator.share){ await navigator.share(data); return; } } catch(err){ if (err?.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(APP_URL); $('shareBtn').textContent = 'Copiado'; setTimeout(() => $('shareBtn').textContent = 'Compartir', 2000); }
+  catch { const r = document.createRange(); r.selectNodeContents($('appUrl')); getSelection().removeAllRanges(); getSelection().addRange(r); }
+};
+$('save').onclick = () => { proxy = $('proxy').value.trim() || PROXY_DEFAULT; store.set('proxy', proxy); $('settingsSheet').hidden = true; tick = 0; refresh(); };
+$('resetProxy').onclick = () => { proxy = PROXY_DEFAULT; $('proxy').value = proxy; store.set('proxy', ''); tick = 0; refresh(); };
+
+/* ---------- Instalar en el móvil ---------- */
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let deferredPrompt = null;
+function showInstall(text, canPrompt){
+  if (standalone || store.get('installSeen')) return;
+  $('installTxt').textContent = text; $('installGo').hidden = !canPrompt; $('install').hidden = false;
+}
+$('installX').onclick = () => { $('install').hidden = true; store.set('installSeen', '1'); };
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; showInstall('Instálala en tu móvil para abrirla como una app más.', true); });
+$('installGo').onclick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $('installX').onclick(); };
+if (isIOS) setTimeout(() => showInstall('Pulsa el botón Compartir de Safari y elige «Añadir a pantalla de inicio».', false), 4000);
+
+/* ---------- Funcionar sin conexión ---------- */
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+window.addEventListener('online', () => refresh());
+window.addEventListener('offline', () => { $('status').className = 'status err'; $('status').innerHTML = '<span class="dot"></span>Sin conexión a internet'; });
 
 applyFilters();
 renderFavs();
