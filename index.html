@@ -487,21 +487,37 @@ window.openStation = async id => {
 function renderStation(){
   const c = depCache.get(currentStation); if (!c) return;
   const nowMin = Date.now()/60000;
-  const list = c.list.filter(x => {
-    const d = x[1] === 0 ? delaysNum.get(x[6]) : delays.get(x[2]);
-    return x[0] + (d ? d.delay/60 : 0) >= nowMin - 1;
-  }).slice(0, 25);
+  const liveDelay = x => Math.abs(x[0] - nowMin) < 240 ? (x[1] === 0 ? delaysNum.get(x[6]) : delays.get(x[2])) : null;
+  // Un mismo tren puede venir en los dos horarios (p. ej. Regional y C7): se junta en una fila
+  const merged = new Map();
+  for (const x of c.list){
+    const id = (x[6] || x[2]) + '@' + x[0];
+    const prev = merged.get(id);
+    if (!prev) merged.set(id, {x, d: liveDelay(x), extra: []});
+    else {
+      const d = liveDelay(x);
+      if (!prev.d && d){ prev.extra.push(prev.x[3]); prev.x = x; prev.d = d; }
+      else prev.extra.push(x[3]);
+    }
+  }
+  const list = [...merged.values()]
+    .map(o => ({...o, est: o.x[0] + (o.d && !o.d.cancelled ? Math.max(0, o.d.delay/60) : 0)}))
+    .filter(o => o.est >= nowMin - 1)
+    .sort((a, b) => a.est - b.est).slice(0, 25);
   if (!list.length){ $('stRows').innerHTML = '<p class="empty">No quedan salidas programadas hoy.</p>'; return; }
-  $('stRows').innerHTML = list.map(([t, tipo, key, ri, dest, sign, num]) => {
+  const chipOf = (ri, tipo) => {
+    const r = VJ?.rutas?.[ri] || ['', '', ''], name = r[0] || r[1];
+    return name ? `<span class="ln${tipo===0?' ld':''}"${r[2]?` style="background:#${esc(r[2])}"`:''}>${esc(name)}</span>` : '';
+  };
+  $('stRows').innerHTML = list.map(({x:[t, tipo, key, ri, dest, sign, num], d, extra}) => {
     const ruta = VJ?.rutas?.[ri] || ['', '', ''];
     const soon = Math.abs(t - nowMin) < 240;
-    const d = soon ? (tipo === 0 ? delaysNum.get(num) : delays.get(key)) : null;
     const mins = d ? Math.round(d.delay/60) : 0;
     const sched = new Date(t*60000), est = new Date((t + Math.max(0, mins))*60000);
     const m = soon ? (tipo === 0 ? byFav.get('l:'+num) : byTrip.get(key)) : null;
     const tomorrow = sched.toDateString() !== new Date().toDateString();
     const line = ruta[0] || ruta[1];
-    const chip = line ? `<span class="ln${tipo===0?' ld':''}"${tipo===1 && ruta[2]?` style="background:#${esc(ruta[2])}"`:''}>${esc(line)}</span>` : '';
+    const chip = [...new Set([chipOf(ri, tipo), ...extra.map(r => chipOf(r, tipo === 0 ? 1 : 0))])].join('');
     const tag = m ? 'button' : 'div';
     return `<${tag} class="row"${m?` onclick="focusTrip(${arg(tipo)}, ${arg(tipo===0?num:key)})"`:''}>
       <div class="t">${hhmm(mins>0?est:sched)}${mins>0?`<s>${hhmm(sched)}</s>`:''}${tomorrow?'<s style="text-decoration:none">mañana</s>':''}</div>
