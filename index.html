@@ -32,6 +32,7 @@
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 var(--body)}
 #map{position:fixed;inset:0;background:var(--bg)}
 .leaflet-container{background:var(--bg);font-family:var(--body)}
+@media (prefers-color-scheme:dark){.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)}}
 .top{position:fixed;z-index:1000;top:calc(env(safe-area-inset-top,0px) + 10px);
   left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));
   display:flex;gap:8px;align-items:stretch;pointer-events:none}
@@ -129,9 +130,9 @@ const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '
 
 const dark = matchMedia('(prefers-color-scheme: dark)').matches;
 const map = L.map('map', {zoomControl:false, attributionControl:true, preferCanvas:false}).setView([40.2,-3.7], 6);
-L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark?'dark_all':'light_all'}/{z}/{x}/{y}{r}.png`, {
-  maxZoom:18, subdomains:'abcd',
-  attribution:'© OpenStreetMap · © CARTO · Datos: Renfe (CC BY 4.0)'
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom:18,
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Datos: Renfe (CC BY 4.0)'
 }).addTo(map);
 
 const layers = {ld: L.layerGroup().addTo(map), cer: L.layerGroup().addTo(map)};
