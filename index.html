@@ -14,10 +14,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: mapa a pantalla completa, cartel de estación arriba, filtros y avisos abajo, fichas como hojas deslizantes */
+/* Layout: mapa a pantalla completa, cartel de estación arriba, filtros abajo, fichas como hojas deslizantes */
 :root{
   --bg:#f3f4f1; --panel:#ffffffef; --fg:#1b2028; --muted:#5d6672; --line:#d9dcd6;
-  --ld:#d8890a; --cer:#0f8f83; --ring:#ffffff;
+  --ld:#d8890a; --cer:#0f8f83; --ring:#ffffff; --fav:#e3b400; --done:#9aa1aa;
   --late:#c43d32; --warn:#c77700; --ok:#2f8a4c;
   --display:"Barlow Condensed","Arial Narrow",sans-serif;
   --body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
@@ -26,7 +26,7 @@
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#14181f; --panel:#1c222bf2; --fg:#eef0f2; --muted:#9aa3ae; --line:#2e3640;
-  --ld:#f2a516; --cer:#2fd0c0; --ring:#ffffff;
+  --ld:#f2a516; --cer:#2fd0c0; --ring:#ffffff; --fav:#ffd23f; --done:#6f7884;
   --late:#ff6b5e; --warn:#f0a53a; --ok:#5ccf7e; color-scheme:dark;}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -51,16 +51,22 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ld);outline-off
 
 .bottom{position:fixed;z-index:1000;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
   left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));
-  padding:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.chip{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:10px;border:1px solid var(--line);
+  padding:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);
   background:transparent;color:var(--fg);font:500 13px var(--body);cursor:pointer}
 .chip[aria-pressed="false"]{opacity:.45}
 .chip b{font:600 13px var(--mono)}
 .chip.alerts b{color:var(--late)}
+.chip.favs b{color:var(--warn)}
 .sw{width:12px;height:12px;border:2px solid var(--ring);box-shadow:0 0 0 1px #0003}
 .sw.ld{background:var(--ld);border-radius:3px;transform:rotate(45deg)} .sw.cer{background:var(--cer);border-radius:50%}
 .search{flex:1 1 100%;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);
   background:transparent;color:var(--fg);font:500 15px var(--body)}
+.results{flex:1 1 100%;display:flex;flex-direction:column;gap:2px}
+.results button{display:flex;justify-content:space-between;gap:8px;text-align:left;border:0;border-radius:8px;
+  background:transparent;color:var(--fg);padding:8px 10px;font-size:14px;cursor:pointer}
+.results button:hover,.results button:focus-visible{background:var(--line)}
+.results button span{color:var(--muted);font-size:12px;white-space:nowrap}
 
 .banner{position:fixed;z-index:1001;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 76px);
   width:min(92vw,440px);padding:12px 14px;font-size:13px}
@@ -71,13 +77,14 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ld);outline-off
 .sheet{position:fixed;z-index:1002;left:0;right:0;bottom:0;max-height:78vh;display:flex;flex-direction:column;
   border-radius:18px 18px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}
 .sheet-head{display:flex;align-items:center;gap:10px;padding:16px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
-.sheet-head h2{margin:0;flex:1;font:700 21px/1 var(--display);text-transform:uppercase;letter-spacing:.04em}
+.sheet-head h2{margin:0;flex:1;min-width:0;font:700 21px/1.05 var(--display);text-transform:uppercase;letter-spacing:.04em;text-wrap:balance}
+.sheet-head small{display:block;font:400 12px var(--body);text-transform:none;letter-spacing:0;color:var(--muted);margin-top:3px}
 .sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px max(16px,env(safe-area-inset-right,0px)) 18px max(16px,env(safe-area-inset-left,0px))}
 .close{border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:10px;padding:7px 12px;font-weight:600;cursor:pointer}
 .sheet label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px}
 .sheet input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--fg);font:13px var(--mono)}
 .primary{margin-top:14px;width:100%;padding:11px;border-radius:10px;border:0;background:var(--ld);color:#14181f;font-weight:600;font-size:15px;cursor:pointer}
-.note{color:var(--muted);font-size:12px;margin:10px 0 0}
+.note{color:var(--muted);font-size:12px;margin:10px 0 0;max-width:65ch}
 
 /* Avisos */
 .filterbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
@@ -85,11 +92,27 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ld);outline-off
 .filterbar button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .group{margin:14px 0 6px;font:700 15px var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .alert{padding:10px 0;border-top:1px solid var(--line)}
-.alert:first-of-type{border-top:0}
 .alert p{margin:5px 0 0;max-width:65ch}
 .alert time{font-size:11.5px;color:var(--muted)}
 .lines{display:flex;gap:4px;flex-wrap:wrap}
 .ln{display:inline-block;min-width:26px;text-align:center;padding:1px 6px;border-radius:5px;font:600 12px var(--mono);color:#fff;background:var(--cer)}
+.ln.ld{background:var(--ld);color:#1b2028}
+
+/* Filas (salidas y favoritos) */
+.rows{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:58px 1fr auto;gap:2px 10px;align-items:center;padding:10px 4px;border-top:1px solid var(--line);
+  background:transparent;border-left:0;border-right:0;border-bottom:0;color:var(--fg);text-align:left;font-size:14px;width:100%}
+.row:first-child{border-top:0}
+button.row{cursor:pointer}
+.row .t{font:600 18px/1 var(--mono);font-variant-numeric:tabular-nums}
+.row .t s{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:3px}
+.row .what{min-width:0}
+.row .dest{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .sub{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.row .live{font-size:11px;color:var(--ok);font-weight:600}
+.row .end{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.unfav{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:3px 8px;font-size:12px;cursor:pointer}
+.empty{color:var(--muted);padding:12px 0}
 
 /* Marcadores */
 .tm{position:relative;width:0;height:0}
@@ -101,11 +124,19 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ld);outline-off
 .tm.cer{color:var(--cer)} .tm.ld{color:var(--ld)}
 .tm.stopped .dot{width:13px;height:13px;border-width:2px;opacity:.85}
 .tm.hit .dot{outline:3px solid var(--fg);outline-offset:2px}
+.tm.fav .dot{border-color:var(--fav);box-shadow:0 0 0 2px #0006,0 1px 6px #0008}
+.tm .star{position:absolute;left:-7px;top:-27px;font-size:14px;line-height:1;color:var(--fav);text-shadow:0 0 2px #000,0 0 3px #000}
 .tm .late{position:absolute;left:9px;top:-22px;padding:0 5px;border-radius:5px;font:600 11px/17px var(--mono);
   color:#fff;background:var(--warn);white-space:nowrap;box-shadow:0 1px 3px #0005}
 .tm .late.bad{background:var(--late)}
 .zoomed-out .tm .late{display:none}
+.far .tm.moving::before{display:none}
+.far .tm .dot{width:12px;height:12px;border-width:2px}
+.far .tm.stopped .dot{width:9px;height:9px}
+.far .tm.fav::before{display:block;animation:none;opacity:.35}
 @keyframes pulse{0%{transform:translate(-50%,-50%) scale(.45);opacity:.45}100%{transform:translate(-50%,-50%) scale(1.25);opacity:0}}
+.leaflet-tooltip.stn{background:var(--panel);color:var(--fg);border:1px solid var(--line);font:500 12px var(--body);box-shadow:0 2px 6px #0003;padding:2px 6px}
+.leaflet-tooltip.stn::before{display:none}
 
 /* Ficha del tren */
 .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--fg)}
@@ -116,9 +147,13 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ld);outline-off
 .pop .route span{color:var(--muted);font-weight:400}
 .pop dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:8px 0 0;font-size:12.5px}
 .pop dt{color:var(--muted)} .pop dd{margin:0}
+.pop .link{border:0;background:none;padding:0;color:inherit;font:inherit;text-decoration:underline;text-decoration-color:var(--muted);text-underline-offset:2px;cursor:pointer;text-align:left}
+.pop .actions{display:flex;gap:6px;margin-top:10px}
+.pop .actions button{flex:1;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:8px;padding:7px 6px;font-size:12.5px;font-weight:600;cursor:pointer}
+.pop .actions button.on{border-color:var(--fav);color:var(--warn)}
 .badge{display:inline-block;padding:0 6px;border-radius:5px;font:600 12px/18px var(--mono);color:#fff;background:var(--ok)}
 .badge.warn{background:var(--warn)} .badge.bad{background:var(--late)}
-.pop .alink{margin-top:8px;width:100%;border:1px solid var(--late);color:var(--late);background:transparent;border-radius:8px;padding:6px;font-weight:600;cursor:pointer}
+.pop .alink{margin-top:6px;width:100%;border:1px solid var(--late);color:var(--late);background:transparent;border-radius:8px;padding:6px;font-weight:600;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.tm.moving::before{animation:none;opacity:.25}}
 </style>
 </head>
@@ -140,10 +175,24 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ld);outline-off
 </div>
 
 <div class="card bottom">
-  <button class="chip" id="fLd" aria-pressed="true"><span class="sw ld"></span>Larga y media <b id="nLd">–</b></button>
+  <button class="chip" id="fLd" aria-pressed="true"><span class="sw ld"></span>Larga <b id="nLd">–</b></button>
   <button class="chip" id="fCer" aria-pressed="true"><span class="sw cer"></span>Cercanías <b id="nCer">–</b></button>
-  <button class="chip alerts" id="alertsBtn">⚠︎ Avisos <b id="nAl">–</b></button>
-  <input class="search" id="q" type="search" placeholder="Tren, línea o destino (12484, C4, Cádiz…)" aria-label="Buscar tren, línea o destino" autocomplete="off">
+  <button class="chip favs" id="favsBtn">★ <b id="nFav">0</b></button>
+  <button class="chip alerts" id="alertsBtn">⚠︎ <b id="nAl">–</b></button>
+  <div class="results" id="results" hidden></div>
+  <input class="search" id="q" type="search" placeholder="Tren, línea, destino o estación" aria-label="Buscar tren, línea, destino o estación" autocomplete="off">
+</div>
+
+<div class="card sheet" id="stationSheet" hidden>
+  <div class="sheet-head"><h2 id="stTitle">Estación</h2><button class="close" data-close>Cerrar</button></div>
+  <div class="sheet-body"><div class="rows" id="stRows"></div>
+    <p class="note">Horario programado. El retraso se muestra en tiempo real cuando Renfe lo publica.</p></div>
+</div>
+
+<div class="card sheet" id="favsSheet" hidden>
+  <div class="sheet-head"><h2>Mis trenes</h2><button class="close" data-close>Cerrar</button></div>
+  <div class="sheet-body"><div class="rows" id="favRows"></div>
+    <p class="note">Para añadir un tren, tócalo en el mapa y pulsa ☆ Favorito.</p></div>
 </div>
 
 <div class="card sheet" id="alertsSheet" hidden>
@@ -167,13 +216,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ld);outline-off
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const R = 'https://gtfsrt.renfe.com/';
-const FEEDS = {
-  posLd:  R+'vehicle_positions_LD.json',
-  posCer: R+'vehicle_positions.json',
-  tuLd:   R+'trip_updates_LD.json',
-  tuCer:  R+'trip_updates.json',
-  alerts: R+'alerts.json'
-};
+const FEEDS = {posLd:R+'vehicle_positions_LD.json', posCer:R+'vehicle_positions.json',
+  tuLd:R+'trip_updates_LD.json', tuCer:R+'trip_updates.json', alerts:R+'alerts.json'};
 const REFRESH_MS = 20000;
 const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32':'Málaga','40':'Valencia',
   '41':'Murcia/Alicante','50':'Rodalies Catalunya','51':'Rodalies Catalunya','60':'Bilbao','61':'San Sebastián',
@@ -182,9 +226,11 @@ const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32'
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
 let proxy = store.get('proxy') || '';
 const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '0'};
+let favs = (()=>{ try{ return JSON.parse(store.get('favs')||'[]') }catch{ return [] } })();   // [{k, n, kind}]
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const hhmm = t => new Date(t*1000).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+const arg = v => esc(JSON.stringify(v));
+const hhmm = d => d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
 
 /* ---------- Mapa ---------- */
 const map = L.map('map', {zoomControl:false}).setView([40.2,-3.7], 6);
@@ -192,73 +238,113 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18,
   attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Datos: Renfe (CC BY 4.0)'}).addTo(map);
 const layers = {ld:L.layerGroup().addTo(map), cer:L.layerGroup().addTo(map)};
 const markers = {ld:new Map(), cer:new Map()};
-const syncZoom = () => $('map').classList.toggle('zoomed-out', map.getZoom() < 9);
+const routeLayer = L.layerGroup().addTo(map);
+const canvas = L.canvas({padding:.3});
+const stationLayer = L.layerGroup();
+function syncZoom(){
+  const z = map.getZoom();
+  $('map').classList.toggle('zoomed-out', z < 9);
+  $('map').classList.toggle('far', z < 8);
+  z >= 11 ? map.addLayer(stationLayer) : map.removeLayer(stationLayer);
+}
 map.on('zoomend', syncZoom); syncZoom();
 
-/* ---------- Datos estáticos (los genera la Action de GitHub cada noche) ---------- */
+/* ---------- Datos estáticos (los prepara la tarea nocturna de GitHub) ---------- */
 let ST = {}, VJ = null;
-fetch('datos/estaciones.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{ST=j||{}}).catch(()=>{});
-fetch('datos/viajes.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{VJ=j; refreshMarkersOnly();}).catch(()=>{});
-const stName = id => id ? (ST[id] || ('Estación '+id)) : '—';
+const stInfo = id => { const v = ST[id]; return Array.isArray(v) ? v : (v ? [v, null, null] : null); };
+const stName = id => id ? (stInfo(id)?.[0] || ('Estación '+id)) : '—';
+Promise.all([
+  fetch('datos/estaciones.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({})),
+  fetch('datos/viajes.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null)
+]).then(([st, vj]) => { ST = st || {}; VJ = vj; buildStations(); refreshMarkersOnly(); renderFavs(); });
+
+function buildStations(){
+  stationLayer.clearLayers();
+  const ids = VJ?.conSalidas || [];
+  for (const id of ids){
+    const s = stInfo(id); if (!s || s[1] == null) continue;
+    L.circleMarker([s[1], s[2]], {renderer:canvas, radius:5, weight:2, color:'#1b2028', fillColor:'#fff', fillOpacity:1})
+      .bindTooltip(s[0], {className:'stn', direction:'top', offset:[0,-4]})
+      .on('click', () => openStation(id)).addTo(stationLayer);
+  }
+}
 
 /* ---------- Estado en vivo ---------- */
-const delays = new Map();       // tripId -> {delay, cancelled}
-let alerts = [];                 // [{id, text, start, routes:[], nucleos:Set}]
-const entityOf = new Map();      // marker -> datos
+const delays = new Map();      // tripId -> {delay, cancelled}
+const delaysNum = new Map();   // nº de tren de larga distancia -> {delay, cancelled}
+let alerts = [];
+const entityOf = new Map();    // marcador -> entidad
+const byFav = new Map(), byTrip = new Map();
 
 function trainNumber(e, key){
   const v = e.vehicle || {};
   const label = v.vehicle?.label || v.vehicle?.id || '';
   const trip = v.trip?.tripId || '';
   if (key === 'ld') return (label || trip.slice(0,5)).replace(/^0+/, '') || '?';
-  const m = trip.match(/^\d+[A-Z](\d{3,6})/) || label.match(/(\d{4,6})/);
-  return m ? m[1].replace(/^0+/, '') : (label || trip || '?');
+  return cerNumFromTrip(trip) || (label.match(/(\d{4,6})/)||[])[1] || label || '?';
+}
+function cerNumFromTrip(trip){ const m = String(trip).match(/^\d+[A-Z](\d{3,6})/); return m ? m[1].replace(/^0+/, '') : ''; }
+const favKeyOf = (e, key) => key === 'ld' ? 'l:'+trainNumber(e,'ld') : 'c:'+(e.vehicle?.trip?.tripId||'').slice(0,2)+'|'+trainNumber(e,'cer');
+const isFav = k => favs.some(f => f.k === k);
+
+function rowInfo(row){
+  if (!row) return null;
+  const [ri, o, d, sign, pat] = row, ruta = VJ.rutas[ri] || ['', '', ''];
+  return {line: ruta[0] || ruta[1], longName: ruta[1], color: ruta[2], routeIdx: ri, origin: o, dest: d, sign, pat};
 }
 function tripInfo(e, key){
   if (!VJ) return null;
   const tid = e.vehicle?.trip?.tripId || '';
-  let row = key === 'ld' ? VJ.ld[trainNumber(e,'ld')] : (VJ.cer[tid] || VJ.cerNum[tid.slice(0,2)+'|'+trainNumber(e,'cer')]);
-  if (!row) return null;
-  const [ri, o, d, sign] = row, ruta = VJ.rutas[ri] || ['', '', ''];
-  return {line: ruta[0] || ruta[1], longName: ruta[1], color: ruta[2], routeIdx: ri, origin: o, dest: d, sign};
+  return rowInfo(key === 'ld' ? VJ.ld[trainNumber(e,'ld')] : (VJ.cer[tid] || VJ.cerNum[tid.slice(0,2)+'|'+trainNumber(e,'cer')]));
 }
-function lineFromTrip(e){ const m = (e.vehicle?.trip?.tripId||'').match(/(C\d+[a-z]?|R\d+[a-z]?|T\d+)$/i); return m ? m[1].toUpperCase() : ''; }
-function delayOf(e){ return delays.get(e.vehicle?.trip?.tripId || ''); }
-function routeAlerts(info, e){
-  if (!alerts.length) return [];
-  const tid = e.vehicle?.trip?.tripId || '';
-  return alerts.filter(a => a.trips.includes(tid) ||
-    (info && a.routes.some(r => VJ?.rutaId?.[r] === info.routeIdx)));
+function infoByFav(k){
+  if (!VJ) return null;
+  return rowInfo(k.startsWith('l:') ? VJ.ld[k.slice(2)] : VJ.cerNum[k.slice(2)]);
+}
+function lineFromTrip(t){ const m = String(t||'').match(/(C\d+[a-z]?|R\d+[a-z]?|T\d+)$/i); return m ? m[1].toUpperCase() : ''; }
+function delayOf(e, key){ return key === 'ld' ? (delaysNum.get(trainNumber(e,'ld')) || delays.get(e.vehicle?.trip?.tripId)) : delays.get(e.vehicle?.trip?.tripId || ''); }
+function routeAlerts(info, tid){
+  return alerts.filter(a => a.trips.includes(tid) || (info && a.routes.some(r => VJ?.rutaId?.[r] === info.routeIdx)));
+}
+function delayBadge(d){
+  if (!d) return '';
+  const mins = Math.round(d.delay/60);
+  return d.cancelled ? '<span class="badge bad">Cancelado</span>'
+    : mins <= 0 ? '<span class="badge">Puntual</span>'
+    : `<span class="badge ${mins>=15?'bad':mins>=5?'warn':''}">+${mins} min</span>`;
 }
 
 /* ---------- Marcadores ---------- */
 function icon(key, e, hit){
   const stopped = e.vehicle.currentStatus === 'STOPPED_AT';
-  const d = delayOf(e), mins = d ? Math.round(d.delay/60) : 0;
+  const d = delayOf(e, key), mins = d ? Math.round(d.delay/60) : 0;
+  const fav = isFav(favKeyOf(e, key));
   const late = mins >= 3 ? `<span class="late${mins>=15?' bad':''}">+${mins}′</span>` : '';
   return L.divIcon({className:'', iconSize:[0,0],
-    html:`<div class="tm ${key} ${stopped?'stopped':'moving'}${hit?' hit':''}"><div class="dot"></div>${late}</div>`});
+    html:`<div class="tm ${key} ${stopped?'stopped':'moving'}${hit?' hit':''}${fav?' fav':''}"><div class="dot"></div>${fav?'<span class="star">★</span>':''}${late}</div>`});
 }
 function matches(e, key, q){
   if (!q) return false;
   const info = tripInfo(e, key);
-  const hay = [trainNumber(e,key), info?.line, lineFromTrip(e), stName(info?.dest), stName(info?.origin), info?.sign]
+  const hay = [trainNumber(e,key), info?.line, lineFromTrip(e.vehicle?.trip?.tripId), stName(info?.dest), stName(info?.origin), info?.sign]
     .filter(Boolean).join(' ').toLowerCase();
   return hay.includes(q.toLowerCase());
 }
 function render(key, data){
-  const q = $('q').value.trim(), seen = new Set();
+  const seen = new Set();
   for (const e of data.entity || []){
     const p = e.vehicle?.position; if (!p || !p.latitude) continue;
     seen.add(e.id);
     let m = markers[key].get(e.id);
     if (!m){
-      m = L.marker([p.latitude,p.longitude], {icon:icon(key,e,matches(e,key,q))});
-      m.bindPopup(() => popupHtml(entityOf.get(m), key), {maxWidth:290, minWidth:230, autoPanPaddingTopLeft:[10,100], autoPanPaddingBottomRight:[10,190]});
+      m = L.marker([p.latitude,p.longitude], {icon:icon(key,e,false), riseOnHover:true});
+      m._key = key;
+      m.bindPopup(() => popupHtml(entityOf.get(m), key), {maxWidth:300, minWidth:240,
+        autoPanPaddingTopLeft:[10,100], autoPanPaddingBottomRight:[10,200]});
+      m.on('popupopen', () => showRoute(m));
+      m.on('popupclose', () => { if (!keepRoute) routeLayer.clearLayers(); });
       markers[key].set(e.id, m); layers[key].addLayer(m);
-    } else {
-      m.setLatLng([p.latitude,p.longitude]);
-    }
+    } else m.setLatLng([p.latitude,p.longitude]);
     entityOf.set(m, e);
   }
   for (const [id,m] of markers[key]) if (!seen.has(id)){ layers[key].removeLayer(m); markers[key].delete(id); entityOf.delete(m); }
@@ -266,42 +352,166 @@ function render(key, data){
 }
 function refreshMarkersOnly(){
   const q = $('q').value.trim();
+  byFav.clear(); byTrip.clear();
   for (const k of ['ld','cer']) for (const m of markers[k].values()){
-    const e = entityOf.get(m); m.setIcon(icon(k, e, matches(e,k,q)));
-    if (m.isPopupOpen()) m.getPopup().setContent(popupHtml(e,k));
+    const e = entityOf.get(m);
+    byFav.set(favKeyOf(e,k), m); byTrip.set(e.vehicle?.trip?.tripId, m);
+    m.setIcon(icon(k, e, matches(e,k,q)));
+    if (m.isPopupOpen()){ m.getPopup().setContent(popupHtml(e,k)); showRoute(m); }
   }
 }
 
-/* ---------- Ficha ---------- */
+/* ---------- Ficha del tren ---------- */
 const STATUS_TXT = {STOPPED_AT:'Parado en', IN_TRANSIT_TO:'En marcha hacia', INCOMING_AT:'Llegando a'};
 function popupHtml(e, key){
-  const v = e.vehicle, info = tripInfo(e, key), d = delayOf(e);
-  const line = info?.line || (key==='cer' ? lineFromTrip(e) : '');
+  const v = e.vehicle, info = tripInfo(e, key), d = delayOf(e, key), tid = v.trip?.tripId || '';
+  const line = info?.line || (key==='cer' ? lineFromTrip(tid) : '');
   const color = info?.color ? '#'+info.color.replace('#','') : null;
   const kind = key==='ld' ? (line || 'Larga / media distancia') : 'Cercanías';
   const chip = key==='cer' && line ? `<span class="ln"${color?` style="background:${esc(color)}"`:''}>${esc(line)}</span>` : '';
   let route = '';
   if (info?.origin || info?.dest) route = `<div class="route">${esc(stName(info.origin))} <span>→</span> ${esc(info.sign && key==='cer' ? info.sign : stName(info.dest))}</div>`;
   else if (info?.longName) route = `<div class="route">${esc(info.longName)}</div>`;
-  let delay = '<span style="color:var(--muted)">Sin datos</span>';
-  if (d){
-    const mins = Math.round(d.delay/60);
-    delay = d.cancelled ? '<span class="badge bad">Cancelado</span>'
-      : mins <= 0 ? '<span class="badge">Puntual</span>'
-      : `<span class="badge ${mins>=15?'bad':mins>=5?'warn':''}">+${mins} min</span>`;
-  }
-  const al = key==='cer' ? routeAlerts(info, e) : [];
-  const alBtn = al.length ? `<button class="alink" onclick="openAlerts(${esc(JSON.stringify(al.map(a=>a.id)))})">⚠︎ ${al.length} aviso${al.length>1?'s':''} en esta línea</button>` : '';
+  const hasDeps = VJ?.conSalidas?.includes(v.stopId);
+  const stLabel = hasDeps ? `<button class="link" onclick="openStation(${arg(v.stopId)})">${esc(stName(v.stopId))}</button>` : esc(stName(v.stopId));
+  const al = key==='cer' ? routeAlerts(info, tid) : [];
+  const fk = favKeyOf(e, key), fav = isFav(fk);
   return `<div class="pop">
     <div class="kind">${chip}${esc(kind)}</div>
     <div class="num">Tren ${esc(trainNumber(e,key))}</div>
     ${route}
     <dl>
-      <dt>Estado</dt><dd>${esc(STATUS_TXT[v.currentStatus] || 'Cerca de')} ${esc(stName(v.stopId))}</dd>
-      <dt>Retraso</dt><dd>${delay}</dd>
-      ${v.timestamp ? `<dt>Posición</dt><dd>${hhmm(+v.timestamp)}</dd>` : ''}
-    </dl>${alBtn}</div>`;
+      <dt>Estado</dt><dd>${esc(STATUS_TXT[v.currentStatus] || 'Cerca de')} ${stLabel}</dd>
+      <dt>Retraso</dt><dd>${delayBadge(d) || '<span style="color:var(--muted)">Sin datos</span>'}</dd>
+      ${v.timestamp ? `<dt>Posición</dt><dd>${hhmm(new Date(+v.timestamp*1000))}</dd>` : ''}
+    </dl>
+    <div class="actions">
+      <button class="${fav?'on':''}" onclick="toggleFav(${arg(fk)}, ${arg(trainNumber(e,key))}, ${arg(key)})">${fav?'★ En favoritos':'☆ Favorito'}</button>
+      ${info?.pat != null ? `<button onclick="fitRoute()">Ver recorrido</button>` : ''}
+    </div>
+    ${al.length ? `<button class="alink" onclick="openAlerts(${arg(al.map(a=>a.id))})">⚠︎ ${al.length} aviso${al.length>1?'s':''} en esta línea</button>` : ''}
+  </div>`;
 }
+
+/* ---------- Recorrido ---------- */
+let routeBounds = null, keepRoute = false;
+map.on('click', () => { keepRoute = false; routeLayer.clearLayers(); });
+function showRoute(m){
+  routeLayer.clearLayers(); routeBounds = null; keepRoute = false;
+  const e = entityOf.get(m), key = m._key, info = tripInfo(e, key);
+  const pat = info?.pat != null ? VJ.patrones?.[info.pat] : null;
+  if (!pat) return;
+  const pts = pat.map(id => ({id, s: stInfo(id)})).filter(p => p.s && p.s[1] != null);
+  if (pts.length < 2) return;
+  const color = info.color ? '#'+info.color.replace('#','') : getComputedStyle(document.documentElement).getPropertyValue(key==='ld'?'--ld':'--cer').trim();
+  const done = getComputedStyle(document.documentElement).getPropertyValue('--done').trim();
+  const here = m.getLatLng();
+  let idx = pts.findIndex(p => p.id === e.vehicle.stopId);
+  const stopped = e.vehicle.currentStatus === 'STOPPED_AT';
+  const ll = p => [p.s[1], p.s[2]];
+  let past = [], ahead = pts.map(ll);
+  if (idx >= 0){
+    past = pts.slice(0, stopped ? idx+1 : idx).map(ll);
+    ahead = pts.slice(stopped ? idx : idx).map(ll);
+    if (!stopped){ past.push([here.lat, here.lng]); ahead.unshift([here.lat, here.lng]); }
+  }
+  if (past.length > 1) L.polyline(past, {color:done, weight:4, opacity:.8, dashArray:'2 7', lineCap:'round', interactive:false}).addTo(routeLayer);
+  L.polyline(ahead, {color:'#fff', weight:8, opacity:.9, interactive:false}).addTo(routeLayer);
+  L.polyline(ahead, {color, weight:5, opacity:1, interactive:false}).addTo(routeLayer);
+  pts.forEach((p, i) => {
+    const passed = idx >= 0 && (stopped ? i < idx : i < idx);
+    const end = i === 0 || i === pts.length-1;
+    const c = L.circleMarker(ll(p), {radius:end?7:5, weight:3, color:passed?done:color, fillColor:'#fff', fillOpacity:1})
+      .bindTooltip(p.s[0], {className:'stn', direction:'top', offset:[0,-6], permanent:end})
+      .addTo(routeLayer);
+    if (VJ.conSalidas?.includes(p.id)) c.on('click', () => openStation(p.id));
+  });
+  routeBounds = L.latLngBounds(pts.map(ll));
+}
+window.fitRoute = () => { if (routeBounds){ keepRoute = true; map.closePopup(); map.fitBounds(routeBounds.pad(.15), {paddingTopLeft:[40,90], paddingBottomRight:[40,170]}); } };
+
+/* ---------- Favoritos ---------- */
+window.toggleFav = (k, n, kind) => {
+  favs = isFav(k) ? favs.filter(f => f.k !== k) : [...favs, {k, n, kind}];
+  store.set('favs', JSON.stringify(favs));
+  const open = [...markers.ld.values(), ...markers.cer.values()].find(m => m.isPopupOpen());
+  refreshMarkersOnly(); renderFavs();
+  if (open) setTimeout(() => { if (!open.isPopupOpen()) open.openPopup(); }, 0);
+};
+function renderFavs(){
+  $('nFav').textContent = favs.length;
+  if (!favs.length){ $('favRows').innerHTML = '<p class="empty">Aún no tienes trenes favoritos.</p>'; return; }
+  $('favRows').innerHTML = favs.map(f => {
+    const m = byFav.get(f.k), e = m && entityOf.get(m), info = e ? tripInfo(e, m._key) : infoByFav(f.k);
+    const route = info ? `${stName(info.origin)} → ${f.kind==='cer' && info.sign ? info.sign : stName(info.dest)}` : '';
+    const label = f.kind==='ld' ? (info?.line || 'Larga distancia') : 'Cercanías' + (info?.line ? ' '+info.line : '');
+    const status = e ? `${STATUS_TXT[e.vehicle.currentStatus]||'Cerca de'} ${stName(e.vehicle.stopId)}` : 'No circula ahora';
+    return `<div class="row">
+      <div class="t">${esc(f.n)}</div>
+      <div class="what"><div class="dest">${esc(route || label)}</div>
+        <div class="sub">${route ? esc(label)+' · ' : ''}${e ? `<span class="live">● ${esc(status)}</span>` : esc(status)}</div></div>
+      <div class="end">${e ? delayBadge(delayOf(e, m._key)) : ''}
+        ${e ? `<button class="unfav" onclick="locateFav(${arg(f.k)})">Ver</button>` : ''}
+        <button class="unfav" onclick="toggleFav(${arg(f.k)})">Quitar</button></div>
+    </div>`;
+  }).join('');
+}
+window.locateFav = k => { const m = byFav.get(k); if (m) focusMarker(m); };
+function focusMarker(m){
+  document.querySelectorAll('.sheet').forEach(s => s.hidden = true);
+  if (!show[m._key]){ show[m._key] = true; applyFilters(); }
+  map.setView(m.getLatLng(), Math.max(map.getZoom(), 11)); m.openPopup();
+}
+$('favsBtn').onclick = () => { renderFavs(); openSheet('favsSheet'); };
+
+/* ---------- Salidas de una estación ---------- */
+const depCache = new Map();
+let currentStation = null;
+window.openStation = async id => {
+  currentStation = id;
+  const s = stInfo(id);
+  $('stTitle').innerHTML = `${esc(stName(id))}<small>Próximas salidas</small>`;
+  $('stRows').innerHTML = '<p class="empty">Cargando horarios…</p>';
+  map.closePopup(); openSheet('stationSheet');
+  if (s && s[1] != null && map.getZoom() < 11) map.setView([s[1], s[2]], 12);
+  try{
+    let c = depCache.get(id);
+    if (!c || Date.now() - c.t > 600000){
+      const r = await fetch(`datos/salidas/${encodeURIComponent(id)}.json`);
+      if (!r.ok) throw new Error();
+      c = {t: Date.now(), list: await r.json()}; depCache.set(id, c);
+    }
+    if (currentStation === id) renderStation();
+  }catch{ $('stRows').innerHTML = '<p class="empty">No hay horarios para esta estación.</p>'; }
+};
+function renderStation(){
+  const c = depCache.get(currentStation); if (!c) return;
+  const nowMin = Date.now()/60000;
+  const list = c.list.filter(x => {
+    const d = x[1] === 0 ? delaysNum.get(x[6]) : delays.get(x[2]);
+    return x[0] + (d ? d.delay/60 : 0) >= nowMin - 1;
+  }).slice(0, 25);
+  if (!list.length){ $('stRows').innerHTML = '<p class="empty">No quedan salidas programadas hoy.</p>'; return; }
+  $('stRows').innerHTML = list.map(([t, tipo, key, ri, dest, sign, num]) => {
+    const ruta = VJ?.rutas?.[ri] || ['', '', ''];
+    const soon = Math.abs(t - nowMin) < 240;
+    const d = soon ? (tipo === 0 ? delaysNum.get(num) : delays.get(key)) : null;
+    const mins = d ? Math.round(d.delay/60) : 0;
+    const sched = new Date(t*60000), est = new Date((t + Math.max(0, mins))*60000);
+    const m = soon ? (tipo === 0 ? byFav.get('l:'+num) : byTrip.get(key)) : null;
+    const tomorrow = sched.toDateString() !== new Date().toDateString();
+    const line = ruta[0] || ruta[1];
+    const chip = line ? `<span class="ln${tipo===0?' ld':''}"${tipo===1 && ruta[2]?` style="background:#${esc(ruta[2])}"`:''}>${esc(line)}</span>` : '';
+    const tag = m ? 'button' : 'div';
+    return `<${tag} class="row"${m?` onclick="focusTrip(${arg(tipo)}, ${arg(tipo===0?num:key)})"`:''}>
+      <div class="t">${hhmm(mins>0?est:sched)}${mins>0?`<s>${hhmm(sched)}</s>`:''}${tomorrow?'<s style="text-decoration:none">mañana</s>':''}</div>
+      <div class="what"><div class="dest">${esc(tipo===1 && sign ? sign : stName(dest))}</div>
+        <div class="sub">${chip}Tren ${esc(num || cerNumFromTrip(key) || '')}${m?' · <span class="live">● en el mapa</span>':''}</div></div>
+      <div class="end">${delayBadge(d)}</div>
+    </${tag}>`;
+  }).join('');
+}
+window.focusTrip = (tipo, key) => { const m = tipo === 0 ? byFav.get('l:'+key) : byTrip.get(key); if (m) focusMarker(m); };
 
 /* ---------- Avisos ---------- */
 function nucleoOf(routeId){ return NUCLEOS[String(routeId).slice(0,2)] || 'Otros'; }
@@ -321,28 +531,28 @@ function lineChips(a){
   const names = new Map();
   for (const r of a.routes){
     const ri = VJ?.rutaId?.[r], ruta = ri != null ? VJ.rutas[ri] : null;
-    const name = ruta?.[0] || (String(r).match(/(C\d+[a-z]?|R\d+[a-z]?|T\d+)$/i)||[])[1];
+    const name = ruta?.[0] || lineFromTrip(r);
     if (name && !names.has(name.toUpperCase())) names.set(name.toUpperCase(), ruta?.[2] ? '#'+ruta[2] : null);
   }
   return [...names].sort().map(([n,c]) => `<span class="ln"${c?` style="background:${esc(c)}"`:''}>${esc(n)}</span>`).join('');
 }
 let alertFilter = null, alertOnly = null;
+const byName = (a,b) => (a==='Otros')-(b==='Otros') || a.localeCompare(b,'es');
 function renderAlerts(){
   const counts = {};
   alerts.forEach(a => a.nucleos.forEach(n => counts[n] = (counts[n]||0)+1));
-  const names = Object.keys(counts).sort((a,b) => (a==='Otros')-(b==='Otros') || a.localeCompare(b,'es'));
   $('nucleos').innerHTML = alertOnly ? `<button aria-pressed="true" data-n="">Esta línea · ver todos</button>`
     : `<button aria-pressed="${!alertFilter}" data-n="">Todos ${alerts.length}</button>` +
-      names.map(n => `<button aria-pressed="${alertFilter===n}" data-n="${esc(n)}">${esc(n)} ${counts[n]}</button>`).join('');
+      Object.keys(counts).sort(byName).map(n => `<button aria-pressed="${alertFilter===n}" data-n="${esc(n)}">${esc(n)} ${counts[n]}</button>`).join('');
   const list = alerts.filter(a => alertOnly ? alertOnly.includes(a.id) : (!alertFilter || a.nucleos.has(alertFilter)));
   const groups = {};
   list.forEach(a => { const g = [...a.nucleos][0]; (groups[g] ||= []).push(a); });
-  $('alertsList').innerHTML = list.length ? Object.keys(groups).sort((a,b)=>(a==='Otros')-(b==='Otros')||a.localeCompare(b,'es')).map(g =>
+  $('alertsList').innerHTML = list.length ? Object.keys(groups).sort(byName).map(g =>
     `<div class="group">${esc(g)}</div>` + groups[g].map(a => `<div class="alert">
       <div class="lines">${lineChips(a)}</div>
       <p>${esc(a.text)}</p>
       ${a.start ? `<time>Desde ${new Date(a.start*1000).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</time>` : ''}
-    </div>`).join('')).join('') : '<p class="note">No hay avisos ahora mismo.</p>';
+    </div>`).join('')).join('') : '<p class="empty">No hay avisos ahora mismo.</p>';
 }
 $('nucleos').addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
@@ -357,11 +567,13 @@ async function getJson(url){
   if (!r.ok) throw new Error('HTTP '+r.status);
   return r.json();
 }
-function loadDelays(data){
+function loadDelays(data, ld){
   for (const x of data.entity || []){
     const tu = x.tripUpdate; if (!tu?.trip?.tripId) continue;
     const delay = tu.delay ?? tu.stopTimeUpdate?.[0]?.arrival?.delay ?? tu.stopTimeUpdate?.[0]?.departure?.delay ?? 0;
-    delays.set(tu.trip.tripId, {delay:+delay, cancelled: tu.trip.scheduleRelationship === 'CANCELED' || /^TUCANCEL/.test(x.id)});
+    const v = {delay:+delay, cancelled: tu.trip.scheduleRelationship === 'CANCELED' || /^TUCANCEL/.test(x.id)};
+    delays.set(tu.trip.tripId, v);
+    if (ld) delaysNum.set(tu.trip.tripId.slice(0,5).replace(/^0+/, ''), v);
   }
 }
 let tick = 0;
@@ -370,11 +582,13 @@ async function refresh(){
   const keys = ['posLd','posCer','tuLd','tuCer', ...(withAlerts ? ['alerts'] : [])];
   const res = await Promise.allSettled(keys.map(k => getJson(FEEDS[k])));
   const got = Object.fromEntries(keys.map((k,i) => [k, res[i].status==='fulfilled' ? res[i].value : null]));
-  if (got.tuLd || got.tuCer){ delays.clear(); got.tuLd && loadDelays(got.tuLd); got.tuCer && loadDelays(got.tuCer); }
+  if (got.tuLd || got.tuCer){ delays.clear(); delaysNum.clear(); got.tuLd && loadDelays(got.tuLd, true); got.tuCer && loadDelays(got.tuCer, false); }
   if (got.alerts){ alerts = parseAlerts(got.alerts); $('nAl').textContent = alerts.length; if (!$('alertsSheet').hidden) renderAlerts(); }
   if (got.posLd) render('ld', got.posLd);
   if (got.posCer) render('cer', got.posCer);
   refreshMarkersOnly();
+  if (!$('favsSheet').hidden) renderFavs();
+  if (!$('stationSheet').hidden) renderStation();
 
   const ok = !!(got.posLd || got.posCer), st = $('status');
   const now = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -394,12 +608,23 @@ function applyFilters(){
 }
 $('fLd').onclick = () => { show.ld = !show.ld; store.set('show_ld', show.ld?'1':'0'); applyFilters(); };
 $('fCer').onclick = () => { show.cer = !show.cer; store.set('show_cer', show.cer?'1':'0'); applyFilters(); };
+const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 let searchT;
 $('q').addEventListener('input', () => {
   clearTimeout(searchT);
   searchT = setTimeout(() => {
     refreshMarkersOnly();
-    const q = $('q').value.trim(); if (q.length < 2) return;
+    const q = $('q').value.trim();
+    // Estaciones que coinciden
+    const res = $('results');
+    if (q.length >= 3 && VJ?.conSalidas){
+      const nq = norm(q);
+      const hits = VJ.conSalidas.map(id => [id, stName(id)]).filter(([, n]) => norm(n).includes(nq))
+        .sort((a,b) => norm(a[1]).indexOf(nq) - norm(b[1]).indexOf(nq) || a[1].length - b[1].length).slice(0, 4);
+      res.innerHTML = hits.map(([id, n]) => `<button onclick="openStation(${arg(id)})">${esc(n)}<span>Salidas →</span></button>`).join('');
+      res.hidden = !hits.length;
+    } else res.hidden = true;
+    if (q.length < 2) return;
     const hits = [];
     for (const k of ['ld','cer']) if (show[k]) for (const m of markers[k].values()) if (matches(entityOf.get(m),k,q)) hits.push(m);
     if (hits.length === 1){ map.setView(hits[0].getLatLng(), Math.max(map.getZoom(), 11)); hits[0].openPopup(); }
@@ -409,7 +634,7 @@ $('q').addEventListener('input', () => {
 $('locate').onclick = () => {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(p => {
-    map.setView([p.coords.latitude, p.coords.longitude], 11);
+    map.setView([p.coords.latitude, p.coords.longitude], 12);
     L.circleMarker([p.coords.latitude, p.coords.longitude], {radius:7, color:'#3b82f6', fillOpacity:.9}).addTo(map);
   });
 };
@@ -417,13 +642,14 @@ function openSheet(id){ document.querySelectorAll('.sheet').forEach(s => s.hidde
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.sheet').hidden = true);
 $('settingsBtn').onclick = () => {
   $('proxy').value = proxy;
-  $('datosInfo').textContent = VJ ? `Nombres de estaciones y recorridos actualizados el ${new Date(VJ.generado).toLocaleString('es-ES',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}.`
-    : 'Aún no hay nombres de estaciones ni recorridos: falta ejecutar la tarea «Actualizar datos de Renfe» en GitHub.';
+  $('datosInfo').textContent = VJ ? `Estaciones, recorridos y horarios actualizados el ${new Date(VJ.generado).toLocaleString('es-ES',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}.`
+    : 'Aún no hay estaciones ni horarios: falta que se ejecute la tarea «Actualizar datos de Renfe» en GitHub.';
   openSheet('settingsSheet');
 };
 $('save').onclick = () => { proxy = $('proxy').value.trim(); store.set('proxy', proxy); $('settingsSheet').hidden = true; tick = 0; refresh(); };
 
 applyFilters();
+renderFavs();
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
