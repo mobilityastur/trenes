@@ -325,7 +325,7 @@ const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32'
   '62':'Santander','70':'Zaragoza'};
 
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
-const APP_VERSION = '1.9';
+const APP_VERSION = '1.10';
 const PROXY_DEFAULT = 'https://trenes.navamar2002.workers.dev/?url=';
 let proxy = store.get('proxy') || PROXY_DEFAULT;
 const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '0'};
@@ -660,40 +660,62 @@ const raIndex = id => raAlias?.get(id);
 const raName = i => RA.paradas[i][1];
 const raDate = m => new Date((RA.base + m) * 60000);
 
-function csa(from, to, t0){
-  const n = RA.paradas.length, INF = 1e12;
-  const S = new Float64Array(n).fill(INF), X = new Int16Array(n).fill(999), inC = new Int32Array(n).fill(-1);
-  const enter = new Int32Array(RA.viajes.length).fill(-1), trX = new Int16Array(RA.viajes.length);
-  S[from] = t0; X[from] = 0;
+// Búsqueda por rondas: ronda r = trayectos con r transbordos como máximo.
+// Así se obtiene, para cada número de transbordos, la llegada más temprana.
+const MAX_TRANSFERS = 3, TRANSFER_PENALTY = 15;   // un transbordo «cuesta» 15 min: solo compensa si ahorra más
+function rounds(from, to, t0){
+  const n = RA.paradas.length, nv = RA.viajes.length, INF = 1e12;
   let lo = 0, hi = conns.length;
   while (lo < hi){ const mid = (lo + hi) >> 1; conns[mid][0] < t0 ? lo = mid + 1 : hi = mid; }
-  for (let ci = lo; ci < conns.length; ci++){
-    const c = conns[ci];
-    if (c[0] >= S[to]) break;
-    const ti = c[4];
-    if (enter[ti] === -1){
-      const ready = c[2] === from ? S[from] : S[c[2]] + MIN_TRANSFER;
-      if (S[c[2]] >= INF || ready > c[0]) continue;
-      if (c[2] !== from && c[0] - S[c[2]] > MAX_WAIT) continue;   // nada de esperas de horas ni de pasar la noche
-      enter[ti] = ci; trX[ti] = c[2] === from ? 0 : X[c[2]] + 1;
+  const res = [];
+  let prev = null, prevPar = null;
+  for (let r = 0; r <= MAX_TRANSFERS; r++){
+    const cur = prev ? Float64Array.from(prev) : new Float64Array(n).fill(INF);
+    const par = prevPar ? prevPar.slice() : new Array(n).fill(null);   // {ci, ei, r}
+    const enter = new Int32Array(nv).fill(-1);
+    for (let ci = lo; ci < conns.length; ci++){
+      const c = conns[ci];
+      if (c[0] >= cur[to] || c[0] > t0 + 36*60) break;
+      const ti = c[4];
+      if (enter[ti] === -1){
+        if (c[2] === from){ if (c[0] < t0) continue; }
+        else {
+          if (!prev) continue;                                   // ronda 0: solo se sube en el origen
+          const a = prev[c[2]];
+          if (a >= INF || a + MIN_TRANSFER > c[0] || c[0] - a > MAX_WAIT) continue;
+        }
+        enter[ti] = ci;
+      }
+      if (c[1] < cur[c[3]]){ cur[c[3]] = c[1]; par[c[3]] = {ci, ei: enter[ti], r}; }
     }
-    const x = trX[ti];
-    if (c[1] < S[c[3]] || (c[1] === S[c[3]] && x < X[c[3]])){ S[c[3]] = c[1]; X[c[3]] = x; inC[c[3]] = ci; }
+    if (cur[to] < INF && (!res.length || cur[to] < res[res.length-1].arr)){
+      const legs = []; let s = to, rr = r, ok = true, guard = 0;
+      while (s !== from && guard++ < 10){
+        const pp = rr === r ? par[s] : roundsPar[rr][s];
+        if (!pp){ ok = false; break; }
+        const c = conns[pp.ci], ec = conns[pp.ei];
+        legs.unshift({ti: c[4], from: ec[2], to: c[3], dep: ec[0], arr: c[1], kFrom: ec[5], kTo: c[5] + 1});
+        s = ec[2]; rr = pp.r - 1;
+        if (s !== from && rr < 0){ ok = false; break; }
+      }
+      if (ok && s === from) res.push({legs, dep: legs[0].dep, arr: legs[legs.length-1].arr});
+    }
+    roundsPar[r] = par;
+    prev = cur; prevPar = par;
   }
-  if (S[to] >= INF) return null;
-  const legs = []; let s = to, guard = 0;
-  while (s !== from && guard++ < 20){
-    const ci = inC[s]; if (ci < 0) return null;
-    const c = conns[ci], ec = conns[enter[c[4]]];
-    legs.unshift({ti: c[4], from: ec[2], to: c[3], dep: ec[0], arr: c[1], kFrom: ec[5], kTo: c[5] + 1});
-    s = ec[2];
-  }
-  return s === from ? {legs, dep: legs[0].dep, arr: legs[legs.length-1].arr} : null;
+  return res;
+}
+const roundsPar = [];
+function bestJourney(from, to, t){
+  const all = rounds(from, to, t);
+  if (!all.length) return null;
+  // Elige el de menor «coste»: llegada + 15 min por transbordo
+  return all.reduce((b, o) => (o.arr + TRANSFER_PENALTY * (o.legs.length-1) < b.arr + TRANSFER_PENALTY * (b.legs.length-1) ? o : b));
 }
 function planOptions(from, to, t0){
   const out = []; let t = t0;
   for (let i = 0; i < 60 && out.length < 6 && t < t0 + 36*60; i++){
-    const r = csa(from, to, t);
+    const r = bestJourney(from, to, t);
     if (r){ out.push(r); t = r.dep + 1; continue; }
     // Sin trayecto desde t: probar desde la siguiente salida de la estación de origen
     let ci = 0, hi = conns.length;
@@ -702,9 +724,12 @@ function planOptions(from, to, t0){
     if (ci >= conns.length) break;
     t = conns[ci][0];
   }
-  // Fuera las opciones peores que otra (sale antes y llega igual o más tarde)
-  return out.filter(a => !out.some(b => b !== a && b.dep >= a.dep && b.arr <= a.arr && (b.dep > a.dep || b.arr < a.arr || b.legs.length < a.legs.length)))
-            .sort((a, b) => a.dep - b.dep).slice(0, 4);
+  // Fuera las opciones peores que otra: sale antes (o igual), llega más tarde (o igual) y no tiene menos transbordos
+  const keep = out.filter(a => !out.some(b => b !== a && b.dep >= a.dep && b.arr <= a.arr && b.legs.length <= a.legs.length &&
+                                                (b.dep > a.dep || b.arr < a.arr || b.legs.length < a.legs.length)));
+  const seen = new Set();
+  return keep.filter(o => { const k = o.dep + '|' + o.arr; if (seen.has(k)) return false; seen.add(k); return true; })
+             .sort((a, b) => a.dep - b.dep).slice(0, 4);
 }
 function legLive(leg){
   const v = RA.viajes[leg.ti], nowRel = Date.now()/60000 - RA.base;
