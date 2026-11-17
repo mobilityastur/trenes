@@ -106,6 +106,12 @@ jobs:
               except ValueError:
                   return None
 
+          # Rutas con transbordo: solo trenes que pasan por Asturias
+          def en_asturias(sid):
+              e = estaciones.get(sid)
+              return bool(e) and e[1] is not None and 42.85 <= e[1] <= 43.70 and -7.20 <= e[2] <= -4.50
+          ast_viajes = []
+
           estaciones, rutas, ruta_idx, ruta_id = {}, [], {}, {}
           patrones, pat_idx = [], {}
           salidas = defaultdict(list)
@@ -147,7 +153,9 @@ jobs:
                           seq = int(r["stop_sequence"])
                       except ValueError:
                           continue
-                      paradas[r["trip_id"]].append((seq, r["stop_id"], r.get("departure_time") or r.get("arrival_time", "")))
+                      salida_h = r.get("departure_time") or r.get("arrival_time", "")
+                      llegada_h = r.get("arrival_time") or salida_h
+                      paradas[r["trip_id"]].append((seq, r["stop_id"], salida_h, llegada_h))
 
               for tid, (ri, cartel, num, fechas) in viajes.items():
                   ps = sorted(paradas.get(tid, []))
@@ -169,14 +177,67 @@ jobs:
                   numero = (num or (tid[:5] if clave == "ld" else "")).lstrip("0")
                   for fecha in fechas:
                       base = medianoche(fecha)
-                      for _, parada, hora in ps[:-1]:          # en la última parada no se sale
+                      for _, parada, hora, _ in ps[:-1]:       # en la última parada no se sale
                           m = minutos(hora)
                           if m is None:
                               continue
                           t = base + m
                           if DESDE <= t < HASTA:
                               salidas[parada].append([t, tipo, clave_tren, ri, ids[-1], cartel, numero])
+
+                  # Horario completo para el buscador de rutas (Cercanías de Asturias y trenes que la cruzan)
+                  if (tid.startswith("20") if clave == "cer" else any(en_asturias(s) for s in ids)):
+                      for fecha in fechas:
+                          base = medianoche(fecha)
+                          evs = []
+                          for _, parada, hs, hl in ps:
+                              if clave == "ld" and not en_asturias(parada):
+                                  continue
+                              ms, ml = minutos(hs), minutos(hl)
+                              if ms is None and ml is None:
+                                  continue
+                              ms = ms if ms is not None else ml
+                              ml = ml if ml is not None else ms
+                              evs.append((parada, base + ml, base + ms))
+                          if len(evs) >= 2 and evs[-1][1] >= DESDE and evs[0][2] < HASTA:
+                              ast_viajes.append([tipo, clave_tren, ri, numero, cartel, ids[-1], evs])
               print(clave, "viajes:", len(viajes), "patrones acumulados:", len(patrones), flush=True)
+
+          # Une las estaciones que tienen dos códigos (Cercanías y Larga Distancia) si están a menos de 250 m
+          import math
+          usadas = []
+          for v in sorted(ast_viajes, key=lambda v: -v[0]):   # primero Cercanías: sus nombres mandan
+              for p_, _, _ in v[6]:
+                  if p_ not in usadas:
+                      usadas.append(p_)
+          def dist(a, b):
+              ea, eb = estaciones.get(a), estaciones.get(b)
+              if not ea or not eb or ea[1] is None or eb[1] is None:
+                  return 1e9
+              dy = (ea[1] - eb[1]) * 111320
+              dx = (ea[2] - eb[2]) * 111320 * math.cos(math.radians(ea[1]))
+              return math.hypot(dx, dy)
+          canon, grupos = {}, []
+          for sid in usadas:
+              for g in grupos:
+                  if dist(sid, g[0]) < 250:
+                      g.append(sid); canon[sid] = g[0]; break
+              else:
+                  grupos.append([sid]); canon[sid] = sid
+          indice = {g[0]: i for i, g in enumerate(grupos)}
+          paradas_ast = [[g[0], estaciones.get(g[0], ["Estación " + g[0]])[0],
+                          estaciones.get(g[0], [0, None])[1], estaciones.get(g[0], [0, None, None])[2], g[1:]] for g in grupos]
+          BASE = DESDE - 24 * 60
+          viajes_ast = []
+          for tipo_, clave_, ri_, num_, cartel_, dest_, evs in ast_viajes:
+              plano = []
+              for p_, ll, sa in evs:
+                  plano += [indice[canon[p_]], ll - BASE, sa - BASE]
+              viajes_ast.append([tipo_, clave_, ri_, num_, cartel_, dest_, plano])
+          with open(f"{OUT}/rutas-asturias.json", "w", encoding="utf-8") as f:
+              json.dump({"base": BASE, "paradas": paradas_ast, "viajes": viajes_ast,
+                         "generado": ahora.isoformat(timespec="minutes")}, f, ensure_ascii=False, separators=(",", ":"))
+          print("Rutas de Asturias:", len(viajes_ast), "viajes,", len(paradas_ast), "estaciones", flush=True)
 
           for parada, lista in salidas.items():
               lista.sort(key=lambda x: x[0])
