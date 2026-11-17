@@ -325,7 +325,7 @@ const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32'
   '62':'Santander','70':'Zaragoza'};
 
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const PROXY_DEFAULT = 'https://trenes.navamar2002.workers.dev/?url=';
 let proxy = store.get('proxy') || PROXY_DEFAULT;
 const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '0'};
@@ -637,7 +637,7 @@ function renderStation(){
 window.focusTrip = (tipo, key) => { const m = tipo === 0 ? byFav.get('l:'+key) : byTrip.get(key); if (m) focusMarker(m); };
 
 /* ---------- Cómo ir (rutas con transbordo en Asturias) ---------- */
-const MIN_TRANSFER = 2;
+const MIN_TRANSFER = 2, MAX_WAIT = 60;   // minutos mínimos y máximos de espera en un transbordo
 let RA = null, raPromise = null, conns = null, raAlias = null;
 function loadRA(){
   if (!raPromise) raPromise = fetch('datos/rutas-asturias.json', {cache:'no-cache'})
@@ -674,6 +674,7 @@ function csa(from, to, t0){
     if (enter[ti] === -1){
       const ready = c[2] === from ? S[from] : S[c[2]] + MIN_TRANSFER;
       if (S[c[2]] >= INF || ready > c[0]) continue;
+      if (c[2] !== from && c[0] - S[c[2]] > MAX_WAIT) continue;   // nada de esperas de horas ni de pasar la noche
       enter[ti] = ci; trX[ti] = c[2] === from ? 0 : X[c[2]] + 1;
     }
     const x = trX[ti];
@@ -691,9 +692,15 @@ function csa(from, to, t0){
 }
 function planOptions(from, to, t0){
   const out = []; let t = t0;
-  for (let i = 0; i < 8 && out.length < 6; i++){
-    const r = csa(from, to, t); if (!r) break;
-    out.push(r); t = r.dep + 1;
+  for (let i = 0; i < 60 && out.length < 6 && t < t0 + 36*60; i++){
+    const r = csa(from, to, t);
+    if (r){ out.push(r); t = r.dep + 1; continue; }
+    // Sin trayecto desde t: probar desde la siguiente salida de la estación de origen
+    let ci = 0, hi = conns.length;
+    while (ci < hi){ const mid = (ci + hi) >> 1; conns[mid][0] <= t ? ci = mid + 1 : hi = mid; }
+    while (ci < conns.length && conns[ci][2] !== from) ci++;
+    if (ci >= conns.length) break;
+    t = conns[ci][0];
   }
   // Fuera las opciones peores que otra (sale antes y llega igual o más tarde)
   return out.filter(a => !out.some(b => b !== a && b.dep >= a.dep && b.arr <= a.arr && (b.dep > a.dep || b.arr < a.arr || b.legs.length < a.legs.length)))
@@ -719,17 +726,21 @@ function renderPlan(){
   const d = new Date(); if (!isNaN(h)) d.setHours(h, m, 0, 0); d.setDate(d.getDate() + day);
   plan.opts = planOptions(plan.from, plan.to, Math.floor(d.getTime()/60000) - RA.base);
   if (!plan.opts.length){ box.innerHTML = '<p class="empty">No hay trayectos a partir de esa hora entre estas estaciones.</p>'; return; }
-  box.innerHTML = '<div class="opts">' + plan.opts.map((o, i) => {
+  const askedDay = new Date(d); askedDay.setHours(0, 0, 0, 0);
+  const noneThatDay = raDate(plan.opts[0].dep).toDateString() !== askedDay.toDateString();
+  const notice = noneThatDay ? `<p class="empty" style="padding-bottom:0">No quedan trayectos ${day === 0 ? 'hoy' : 'ese día'} a partir de esa hora. Primeros del día siguiente:</p>` : '';
+  box.innerHTML = notice + '<div class="opts">' + plan.opts.map((o, i) => {
     const dur = o.arr - o.dep, xf = o.legs.length - 1;
-    let risk = '', anyLive = false;
+    let risk = '', checked = false;
+    const nowRel = Date.now()/60000 - RA.base;
     const legsHtml = o.legs.map((L, j) => {
       const v = RA.viajes[L.ti], live = legLive(L), mins = live ? Math.round(live.delay/60) : 0;
-      if (live) anyLive = true;
       let x = '';
       if (j < o.legs.length - 1){
         const N = o.legs[j+1], ln = legLive(N), nm = ln ? Math.round(ln.delay/60) : 0;
         const wait = N.dep - L.arr, margin = (N.dep + Math.max(0, nm)) - (L.arr + Math.max(0, mins));
         const bad = (live || ln) && margin < MIN_TRANSFER;
+        if ((live || ln) && L.arr - nowRel <= 180) checked = true;   // solo si el cambio es en las próximas horas
         if (bad) risk = `<span class="risk">Transbordo en riesgo en ${esc(raName(L.to))}</span>`;
         x = `<div class="xfer${bad?' bad':''}">Transbordo en ${esc(raName(L.to))} · ${bad ? `con el retraso quedan ${Math.max(0,margin)} min` : `espera ${wait} min`}</div>`;
       }
@@ -743,9 +754,9 @@ function renderPlan(){
     const chips = o.legs.map(L => lineChip(RA.viajes[L.ti][2], RA.viajes[L.ti][0])).join(' <span>›</span> ');
     return `<div class="opt">
       <button class="sum" onclick="planToggle(${i})" aria-expanded="${plan.open===i}">
-        <div class="tt"><b>${dayTag(o.dep)}${hhmm(raDate(o.dep))} → ${hhmm(raDate(o.arr))}</b><span>${dur} min · ${xf ? xf + ' transbordo' + (xf > 1 ? 's' : '') : 'directo'}</span></div>
+        <div class="tt"><b>${dayTag(o.dep)}${hhmm(raDate(o.dep))} → ${hhmm(raDate(o.arr))}${raDate(o.arr).toDateString() !== raDate(o.dep).toDateString() ? '<small style="font:600 12px var(--body);color:var(--warn);margin-left:6px">día siguiente</small>' : ''}</b><span>${dur} min · ${xf ? xf + ' transbordo' + (xf > 1 ? 's' : '') : 'directo'}</span></div>
         <div class="ch">${chips}${xf ? ` <span>· cambio en ${o.legs.slice(0,-1).map(L => esc(raName(L.to))).join(', ')}</span>` : ''}</div>
-        ${risk || (anyLive && xf ? '<span class="okm">Transbordo asegurado con los retrasos actuales</span>' : '')}
+        ${risk || (checked && xf ? '<span class="okm">Transbordo asegurado con los retrasos actuales</span>' : '')}
       </button>
       ${plan.open === i ? `<div class="legs">${legsHtml}</div><button class="mapgo" onclick="planMap(${i})">Ver en el mapa</button>` : ''}
     </div>`;
