@@ -33,7 +33,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 var(--body)}
-#map{position:fixed;inset:0;background:var(--bg)}
+#map{position:fixed;top:0;left:0;right:0;height:100vh;height:100lvh;background:var(--bg)}
 .leaflet-container{background:var(--bg);font-family:var(--body)}
 @media (prefers-color-scheme:dark){.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)}}
 button{font-family:var(--body)}
@@ -62,7 +62,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ld);outline-off
 .chip.favs b{color:var(--warn)}
 .sw{width:12px;height:12px;border:2px solid var(--ring);box-shadow:0 0 0 1px #0003}
 .sw.ld{background:var(--ld);border-radius:3px;transform:rotate(45deg)} .sw.cer{background:var(--cer);border-radius:50%}
-.search{flex:1 1 100%;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);
+.searchrow{flex:1 1 100%;display:flex;gap:6px;min-width:0}
+.planbtn{flex:none;border:0;border-radius:10px;background:var(--ld);color:#14181f;font:600 14px var(--body);padding:0 12px;cursor:pointer}
+.search{flex:1 1 auto;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);
   background:transparent;color:var(--fg);font:500 16px var(--body)}
 .results{flex:1 1 100%;display:flex;flex-direction:column;gap:2px}
 .results button{display:flex;justify-content:space-between;gap:8px;text-align:left;border:0;border-radius:8px;
@@ -173,6 +175,36 @@ button.row{cursor:pointer}
 .legend .k .tm{position:absolute;left:50%;top:50%}
 details.adv{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
 details.adv summary{cursor:pointer;color:var(--muted);font-size:13px}
+/* Cómo ir */
+.od{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center}
+.od .f{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:0 10px}
+.od .f span{font-size:12px;color:var(--muted);width:16px}
+.od .f input{flex:1;min-width:0;border:0;background:transparent;color:var(--fg);font:500 16px var(--body);padding:10px 0;outline:none}
+.od .f:focus-within{border-color:var(--ld)}
+.od .swap{grid-row:1 / span 2;grid-column:2;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:10px;width:42px;height:42px;font-size:18px;cursor:pointer}
+.sugg{display:flex;flex-direction:column;margin-top:4px}
+.sugg button{text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg);padding:10px 6px;font-size:15px;cursor:pointer}
+.when{display:flex;gap:6px;margin:10px 0 4px;flex-wrap:wrap}
+.when select,.when input{border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--fg);font:500 16px var(--body);padding:7px 8px}
+.when button{border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--fg);font-weight:600;padding:7px 12px;cursor:pointer}
+.opts{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.opt{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.opt > button.sum{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--fg);padding:0;cursor:pointer}
+.opt .tt{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.opt .tt b{font:600 20px var(--mono);font-variant-numeric:tabular-nums}
+.opt .tt span{font-size:12.5px;color:var(--muted)}
+.opt .ch{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted)}
+.risk{display:inline-block;margin-top:6px;padding:1px 7px;border-radius:5px;font-size:12px;font-weight:600;color:#fff;background:var(--late)}
+.okm{display:inline-block;margin-top:6px;font-size:12px;color:var(--ok);font-weight:600}
+.legs{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.leg{display:grid;grid-template-columns:48px 1fr;gap:2px 10px;padding:4px 0}
+.leg .h{font:600 14px var(--mono);font-variant-numeric:tabular-nums}
+.leg .tr{grid-column:2;font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:2px 0 6px;border-left:3px solid var(--c,var(--cer));padding-left:8px;margin-left:-2px}
+.xfer{margin:4px 0 4px 58px;font-size:12.5px;padding:4px 8px;border-radius:8px;background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.xfer.bad{background:color-mix(in srgb,var(--late) 18%,transparent);color:var(--late);font-weight:600}
+.opt .mapgo{margin-top:8px;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:8px;padding:7px 10px;font-weight:600;cursor:pointer}
+.stacts{display:flex;gap:6px;margin-top:8px}
+.stacts button{border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:8px;padding:5px 10px;font:600 12.5px var(--body);text-transform:none;letter-spacing:0;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.tm.moving::before{animation:none;opacity:.25}}
 </style>
 </head>
@@ -199,7 +231,29 @@ details.adv summary{cursor:pointer;color:var(--muted);font-size:13px}
   <button class="chip favs" id="favsBtn">★ <b id="nFav">0</b></button>
   <button class="chip alerts" id="alertsBtn">⚠︎ <b id="nAl">–</b></button>
   <div class="results" id="results" hidden></div>
-  <input class="search" id="q" type="search" placeholder="Tren, línea, destino o estación" aria-label="Buscar tren, línea, destino o estación" autocomplete="off">
+  <div class="searchrow">
+    <input class="search" id="q" type="search" placeholder="Tren, línea, destino o estación" aria-label="Buscar tren, línea, destino o estación" autocomplete="off">
+    <button class="planbtn" id="planBtn">Cómo ir</button>
+  </div>
+</div>
+
+<div class="card sheet" id="planSheet" hidden>
+  <div class="sheet-head"><h2>Cómo ir<small>Cercanías y trenes en Asturias, con transbordos</small></h2><button class="close" data-close>Cerrar</button></div>
+  <div class="sheet-body">
+    <div class="od">
+      <label class="f"><span>De</span><input id="pFrom" placeholder="Estación de salida" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      <button class="swap" id="pSwap" aria-label="Intercambiar origen y destino">⇅</button>
+      <label class="f"><span>A</span><input id="pTo" placeholder="Estación de llegada" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+    </div>
+    <div class="sugg" id="pSugg"></div>
+    <div class="when">
+      <select id="pDay" aria-label="Día"><option value="0">Hoy</option><option value="1">Mañana</option></select>
+      <input type="time" id="pTime" aria-label="Hora de salida">
+      <button id="pNow">Ahora</button>
+    </div>
+    <div id="pResults"></div>
+    <p class="note">Horario programado de Renfe, con los retrasos en directo cuando se publican. Se dejan al menos 2 minutos para cada transbordo.</p>
+  </div>
 </div>
 
 <div class="card sheet" id="stationSheet" hidden>
@@ -237,7 +291,7 @@ details.adv summary{cursor:pointer;color:var(--muted);font-size:13px}
       <div class="k"><span class="badge warn">+9′</span></div><div>Minutos de retraso (en rojo a partir de 15)</div>
       <div class="k"><span style="color:var(--fav);font-size:18px">★</span></div><div>Tus trenes favoritos</div>
     </div>
-    <p class="note">Toca un tren para ver su recorrido y su retraso. Escribe una estación en el buscador para ver sus próximas salidas. Los trenes se actualizan cada 20 segundos.</p>
+    <p class="note">Toca un tren para ver su recorrido y su retraso. Escribe una estación en el buscador para ver sus próximas salidas. Con «Cómo ir» buscas trayectos por Asturias, transbordos incluidos. Los trenes se actualizan cada 20 segundos.</p>
 
     <div class="sec">Datos</div>
     <p class="note" id="datosInfo" style="margin-top:0"></p>
@@ -271,7 +325,7 @@ const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32'
   '62':'Santander','70':'Zaragoza'};
 
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
-const APP_VERSION = '1.6';
+const APP_VERSION = '1.8';
 const PROXY_DEFAULT = 'https://trenes.navamar2002.workers.dev/?url=';
 let proxy = store.get('proxy') || PROXY_DEFAULT;
 const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '0'};
@@ -519,7 +573,9 @@ let currentStation = null;
 window.openStation = async id => {
   currentStation = id;
   const s = stInfo(id);
-  $('stTitle').innerHTML = `${esc(stName(id))}<small>Próximas salidas</small>`;
+  $('stTitle').innerHTML = `${esc(stName(id))}<small>Próximas salidas</small><span class="stacts" id="stActs" hidden>
+    <button onclick="planFromStation(${arg(id)}, 'from')">Salir de aquí</button><button onclick="planFromStation(${arg(id)}, 'to')">Ir hasta aquí</button></span>`;
+  loadRA().then(ra => { if (ra && raIndex(id) != null && $('stActs')) $('stActs').hidden = false; });
   $('stRows').innerHTML = '<p class="empty">Cargando horarios…</p>';
   map.closePopup(); openSheet('stationSheet');
   if (s && s[1] != null && map.getZoom() < 11) map.setView([s[1], s[2]], 12);
@@ -579,6 +635,199 @@ function renderStation(){
   }).join('');
 }
 window.focusTrip = (tipo, key) => { const m = tipo === 0 ? byFav.get('l:'+key) : byTrip.get(key); if (m) focusMarker(m); };
+
+/* ---------- Cómo ir (rutas con transbordo en Asturias) ---------- */
+const MIN_TRANSFER = 2;
+let RA = null, raPromise = null, conns = null, raAlias = null;
+function loadRA(){
+  if (!raPromise) raPromise = fetch('datos/rutas-asturias.json', {cache:'no-cache'})
+    .then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(ra => {
+      RA = ra; if (!ra) return null;
+      raAlias = new Map();
+      ra.paradas.forEach((p, i) => { raAlias.set(p[0], i); (p[4] || []).forEach(a => raAlias.set(a, i)); });
+      conns = [];
+      ra.viajes.forEach((v, ti) => {
+        const e = v[6];
+        for (let k = 0; k + 3 < e.length; k += 3) conns.push([e[k+2], e[k+4], e[k], e[k+3], ti, k/3]);
+      });
+      conns.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      return ra;
+    });
+  return raPromise;
+}
+const raIndex = id => raAlias?.get(id);
+const raName = i => RA.paradas[i][1];
+const raDate = m => new Date((RA.base + m) * 60000);
+
+function csa(from, to, t0){
+  const n = RA.paradas.length, INF = 1e12;
+  const S = new Float64Array(n).fill(INF), X = new Int16Array(n).fill(999), inC = new Int32Array(n).fill(-1);
+  const enter = new Int32Array(RA.viajes.length).fill(-1), trX = new Int16Array(RA.viajes.length);
+  S[from] = t0; X[from] = 0;
+  let lo = 0, hi = conns.length;
+  while (lo < hi){ const mid = (lo + hi) >> 1; conns[mid][0] < t0 ? lo = mid + 1 : hi = mid; }
+  for (let ci = lo; ci < conns.length; ci++){
+    const c = conns[ci];
+    if (c[0] >= S[to]) break;
+    const ti = c[4];
+    if (enter[ti] === -1){
+      const ready = c[2] === from ? S[from] : S[c[2]] + MIN_TRANSFER;
+      if (S[c[2]] >= INF || ready > c[0]) continue;
+      enter[ti] = ci; trX[ti] = c[2] === from ? 0 : X[c[2]] + 1;
+    }
+    const x = trX[ti];
+    if (c[1] < S[c[3]] || (c[1] === S[c[3]] && x < X[c[3]])){ S[c[3]] = c[1]; X[c[3]] = x; inC[c[3]] = ci; }
+  }
+  if (S[to] >= INF) return null;
+  const legs = []; let s = to, guard = 0;
+  while (s !== from && guard++ < 20){
+    const ci = inC[s]; if (ci < 0) return null;
+    const c = conns[ci], ec = conns[enter[c[4]]];
+    legs.unshift({ti: c[4], from: ec[2], to: c[3], dep: ec[0], arr: c[1], kFrom: ec[5], kTo: c[5] + 1});
+    s = ec[2];
+  }
+  return s === from ? {legs, dep: legs[0].dep, arr: legs[legs.length-1].arr} : null;
+}
+function planOptions(from, to, t0){
+  const out = []; let t = t0;
+  for (let i = 0; i < 8 && out.length < 6; i++){
+    const r = csa(from, to, t); if (!r) break;
+    out.push(r); t = r.dep + 1;
+  }
+  // Fuera las opciones peores que otra (sale antes y llega igual o más tarde)
+  return out.filter(a => !out.some(b => b !== a && b.dep >= a.dep && b.arr <= a.arr && (b.dep > a.dep || b.arr < a.arr || b.legs.length < a.legs.length)))
+            .sort((a, b) => a.dep - b.dep).slice(0, 4);
+}
+function legLive(leg){
+  const v = RA.viajes[leg.ti], nowRel = Date.now()/60000 - RA.base;
+  if (Math.abs(leg.dep - nowRel) > 240) return null;
+  return v[0] === 0 ? delaysNum.get(v[3]) : delays.get(v[1]);
+}
+function lineChip(ri, tipo){
+  const r = VJ?.rutas?.[ri] || ['', '', ''], name = r[0] || r[1] || (tipo === 0 ? 'Tren' : 'Cercanías');
+  return `<span class="ln${tipo===0?' ld':''}"${tipo===1 && r[2] ? ` style="background:#${esc(r[2])}"` : ''}>${esc(name)}</span>`;
+}
+const routeColor = (ri, tipo) => { const c = VJ?.rutas?.[ri]?.[2]; return c ? '#' + c : `var(--${tipo===0?'ld':'cer'})`; };
+const plan = {from: null, to: null, opts: [], open: -1, focus: 'from'};
+function renderPlan(){
+  const box = $('pResults');
+  if (!RA){ box.innerHTML = '<p class="empty">Aún no hay horarios de rutas. Se generan en la próxima actualización de datos.</p>'; return; }
+  if (plan.from == null || plan.to == null){ box.innerHTML = '<p class="empty">Elige la estación de salida y la de llegada.</p>'; return; }
+  if (plan.from === plan.to){ box.innerHTML = '<p class="empty">La salida y la llegada son la misma estación.</p>'; return; }
+  const day = +$('pDay').value, [h, m] = ($('pTime').value || '').split(':').map(Number);
+  const d = new Date(); if (!isNaN(h)) d.setHours(h, m, 0, 0); d.setDate(d.getDate() + day);
+  plan.opts = planOptions(plan.from, plan.to, Math.floor(d.getTime()/60000) - RA.base);
+  if (!plan.opts.length){ box.innerHTML = '<p class="empty">No hay trayectos a partir de esa hora entre estas estaciones.</p>'; return; }
+  box.innerHTML = '<div class="opts">' + plan.opts.map((o, i) => {
+    const dur = o.arr - o.dep, xf = o.legs.length - 1;
+    let risk = '', anyLive = false;
+    const legsHtml = o.legs.map((L, j) => {
+      const v = RA.viajes[L.ti], live = legLive(L), mins = live ? Math.round(live.delay/60) : 0;
+      if (live) anyLive = true;
+      let x = '';
+      if (j < o.legs.length - 1){
+        const N = o.legs[j+1], ln = legLive(N), nm = ln ? Math.round(ln.delay/60) : 0;
+        const wait = N.dep - L.arr, margin = (N.dep + Math.max(0, nm)) - (L.arr + Math.max(0, mins));
+        const bad = (live || ln) && margin < MIN_TRANSFER;
+        if (bad) risk = `<span class="risk">Transbordo en riesgo en ${esc(raName(L.to))}</span>`;
+        x = `<div class="xfer${bad?' bad':''}">Transbordo en ${esc(raName(L.to))} · ${bad ? `con el retraso quedan ${Math.max(0,margin)} min` : `espera ${wait} min`}</div>`;
+      }
+      const num = v[3] || cerNumFromTrip(v[1]);
+      return `<div class="leg" style="--c:${routeColor(v[2], v[0])}">
+        <div class="h">${hhmm(raDate(L.dep))}</div><div><b>${esc(raName(L.from))}</b></div>
+        <div class="tr">${lineChip(v[2], v[0])} Tren ${esc(num)} · dirección ${esc(v[0]===1 && v[4] ? v[4] : stName(v[5]))} ${delayBadge(live)}</div>
+        <div class="h">${hhmm(raDate(L.arr))}</div><div>${esc(raName(L.to))}</div>
+      </div>${x}`;
+    }).join('');
+    const chips = o.legs.map(L => lineChip(RA.viajes[L.ti][2], RA.viajes[L.ti][0])).join(' <span>›</span> ');
+    return `<div class="opt">
+      <button class="sum" onclick="planToggle(${i})" aria-expanded="${plan.open===i}">
+        <div class="tt"><b>${dayTag(o.dep)}${hhmm(raDate(o.dep))} → ${hhmm(raDate(o.arr))}</b><span>${dur} min · ${xf ? xf + ' transbordo' + (xf > 1 ? 's' : '') : 'directo'}</span></div>
+        <div class="ch">${chips}${xf ? ` <span>· cambio en ${o.legs.slice(0,-1).map(L => esc(raName(L.to))).join(', ')}</span>` : ''}</div>
+        ${risk || (anyLive && xf ? '<span class="okm">Transbordo asegurado con los retrasos actuales</span>' : '')}
+      </button>
+      ${plan.open === i ? `<div class="legs">${legsHtml}</div><button class="mapgo" onclick="planMap(${i})">Ver en el mapa</button>` : ''}
+    </div>`;
+  }).join('') + '</div>';
+}
+function dayTag(m){
+  const d = raDate(m), t = new Date(), tm = new Date(); tm.setDate(t.getDate() + 1);
+  if (d.toDateString() === t.toDateString()) return '';
+  return `<small style="font:600 12px var(--body);color:var(--warn);margin-right:6px">${d.toDateString() === tm.toDateString() ? 'Mañana' : d.toLocaleDateString('es-ES',{weekday:'short'})}</small>`;
+}
+window.planToggle = i => { plan.open = plan.open === i ? -1 : i; renderPlan(); };
+window.planMap = i => {
+  const o = plan.opts[i]; if (!o) return;
+  routeLayer.clearLayers(); keepRoute = true;
+  const all = [];
+  o.legs.forEach(lg => {
+    const e = RA.viajes[lg.ti][6], pts = [];
+    for (let k = lg.kFrom; k <= lg.kTo; k++){ const p = RA.paradas[e[k*3]]; if (p[2] != null) pts.push([p[2], p[3]]); }
+    const color = routeColor(RA.viajes[lg.ti][2], RA.viajes[lg.ti][0]);
+    const col = color.startsWith('var') ? getComputedStyle(document.documentElement).getPropertyValue(color.slice(4,-1)).trim() : color;
+    L.polyline(pts, {color:'#fff', weight:9, opacity:.9, interactive:false}).addTo(routeLayer);
+    L.polyline(pts, {color:col, weight:6, interactive:false}).addTo(routeLayer);
+    pts.forEach((ll, j) => L.circleMarker(ll, {radius: j===0||j===pts.length-1 ? 7 : 4, weight:3, color:col, fillColor:'#fff', fillOpacity:1, interactive:false}).addTo(routeLayer));
+    all.push(...pts);
+  });
+  [o.legs[0].from, ...o.legs.map(lg => lg.to)].forEach(si => {
+    const p = RA.paradas[si]; if (p[2] == null) return;
+    L.circleMarker([p[2], p[3]], {radius:1, opacity:0, fillOpacity:0}).bindTooltip(p[1], {className:'stn', permanent:true, direction:'top', offset:[0,-8]}).addTo(routeLayer);
+  });
+  $('planSheet').hidden = true;
+  if (all.length) map.fitBounds(L.latLngBounds(all).pad(.2), {paddingTopLeft:[30,100], paddingBottomRight:[30,190]});
+};
+function planSuggest(which){
+  plan.focus = which;
+  const q = norm($(which === 'from' ? 'pFrom' : 'pTo').value.trim());
+  const box = $('pSugg');
+  if (!RA || q.length < 2){ box.innerHTML = ''; return; }
+  const hits = RA.paradas.map((p, i) => [i, p[1]]).filter(([, n]) => norm(n).includes(q))
+    .sort((a, b) => norm(a[1]).indexOf(q) - norm(b[1]).indexOf(q) || a[1].length - b[1].length).slice(0, 6);
+  box.innerHTML = hits.map(([i, n]) => `<button onclick="planPick(${i})">${esc(n)}</button>`).join('') ||
+    '<p class="empty">No hay ninguna estación con ese nombre en Asturias.</p>';
+}
+window.planPick = i => {
+  plan[plan.focus] = i;
+  $(plan.focus === 'from' ? 'pFrom' : 'pTo').value = raName(i);
+  $('pSugg').innerHTML = ''; plan.open = -1;
+  store.set('plan', JSON.stringify({from: plan.from != null ? RA.paradas[plan.from][0] : null, to: plan.to != null ? RA.paradas[plan.to][0] : null}));
+  if (plan.focus === 'from' && plan.to == null) $('pTo').focus(); else $('pFrom').blur(), $('pTo').blur();
+  renderPlan();
+};
+['from', 'to'].forEach(w => {
+  const el = $(w === 'from' ? 'pFrom' : 'pTo');
+  el.addEventListener('input', () => { plan[w] = null; planSuggest(w); });
+  el.addEventListener('focus', () => { el.select(); planSuggest(w); });
+});
+$('pSwap').onclick = () => {
+  [plan.from, plan.to] = [plan.to, plan.from];
+  [$('pFrom').value, $('pTo').value] = [$('pTo').value, $('pFrom').value];
+  plan.open = -1; renderPlan();
+};
+function setNow(){ const d = new Date(); $('pDay').value = '0'; $('pTime').value = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+$('pNow').onclick = () => { setNow(); plan.open = -1; renderPlan(); };
+$('pDay').onchange = $('pTime').onchange = () => { plan.open = -1; renderPlan(); };
+async function openPlan(){
+  openSheet('planSheet'); $('pResults').innerHTML = '<p class="empty">Cargando horarios…</p>';
+  if (!$('pTime').value) setNow();
+  await loadRA();
+  if (RA && plan.from == null && plan.to == null){
+    try{ const s = JSON.parse(store.get('plan') || '{}');
+      if (s.from != null && raIndex(s.from) != null){ plan.from = raIndex(s.from); $('pFrom').value = raName(plan.from); }
+      if (s.to != null && raIndex(s.to) != null){ plan.to = raIndex(s.to); $('pTo').value = raName(plan.to); }
+    }catch{}
+  }
+  renderPlan();
+}
+$('planBtn').onclick = openPlan;
+window.planFromStation = async (id, which) => {
+  await loadRA(); const i = raIndex(id); if (i == null) return;
+  plan[which] = i; $(which === 'from' ? 'pFrom' : 'pTo').value = raName(i);
+  plan.open = -1; setNow(); await openPlan();
+  if (which === 'from' && plan.to == null) $('pTo').focus();
+};
 
 /* ---------- Avisos ---------- */
 function nucleoOf(routeId){ return NUCLEOS[String(routeId).slice(0,2)] || 'Otros'; }
@@ -656,6 +905,7 @@ async function refresh(){
   refreshMarkersOnly();
   if (!$('favsSheet').hidden) renderFavs();
   if (!$('stationSheet').hidden) renderStation();
+  if (!$('planSheet').hidden && plan.opts.length) renderPlan();
 
   const ok = !!(got.posLd || got.posCer), st = $('status');
   const now = new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
