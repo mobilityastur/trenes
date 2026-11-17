@@ -325,7 +325,7 @@ const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32'
   '62':'Santander','70':'Zaragoza'};
 
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
-const APP_VERSION = '1.10';
+const APP_VERSION = '1.11';
 const PROXY_DEFAULT = 'https://trenes.navamar2002.workers.dev/?url=';
 let proxy = store.get('proxy') || PROXY_DEFAULT;
 const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '0'};
@@ -662,9 +662,19 @@ const raDate = m => new Date((RA.base + m) * 60000);
 
 // Búsqueda por rondas: ronda r = trayectos con r transbordos como máximo.
 // Así se obtiene, para cada número de transbordos, la llegada más temprana.
-const MAX_TRANSFERS = 3, TRANSFER_PENALTY = 15;   // un transbordo «cuesta» 15 min: solo compensa si ahorra más
+const MAX_TRANSFERS = 2, TRANSFER_PENALTY = 15;   // un transbordo «cuesta» 15 min: solo compensa si ahorra más
+// Para cada tren, en qué parada de su recorrido pasa por el destino (-1 si no pasa)
+let destCache = {to: -1, pos: null};
+function destPositions(to){
+  if (destCache.to === to) return destCache.pos;
+  const pos = new Int16Array(RA.viajes.length).fill(-1);
+  RA.viajes.forEach((v, ti) => { const e = v[6]; for (let k = 0; k < e.length; k += 3) if (e[k] === to){ pos[ti] = k/3; break; } });
+  destCache = {to, pos};
+  return pos;
+}
 function rounds(from, to, t0){
   const n = RA.paradas.length, nv = RA.viajes.length, INF = 1e12;
+  const destPos = destPositions(to);
   let lo = 0, hi = conns.length;
   while (lo < hi){ const mid = (lo + hi) >> 1; conns[mid][0] < t0 ? lo = mid + 1 : hi = mid; }
   const res = [];
@@ -686,6 +696,8 @@ function rounds(from, to, t0){
         }
         enter[ti] = ci;
       }
+      // Si este tren llega al destino, no se baja antes para hacer otro transbordo
+      if (destPos[ti] >= 0 && c[5] + 1 < destPos[ti]) continue;
       if (c[1] < cur[c[3]]){ cur[c[3]] = c[1]; par[c[3]] = {ci, ei: enter[ti], r}; }
     }
     if (cur[to] < INF && (!res.length || cur[to] < res[res.length-1].arr)){
