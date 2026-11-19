@@ -336,7 +336,7 @@ const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32'
   '62':'Santander','70':'Zaragoza'};
 
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
-const APP_VERSION = '1.13';
+const APP_VERSION = '1.14';
 const PROXY_DEFAULT = 'https://trenes.navamar2002.workers.dev/?url=';
 let proxy = store.get('proxy') || PROXY_DEFAULT;
 const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '0'};
@@ -452,23 +452,30 @@ function gpsCheck(m){
   if (pts.length >= 2){
     let best = null;
     pts.forEach(x => { const d = distM(here[0], here[1], x.s[1], x.s[2]); if (!best || d < best.d) best = {d, x}; });
-    if (best.d <= NEAR_STATION) gps = {at: [best.x.id], text: `En ${best.x.s[0]}`};
+    if (best.d <= NEAR_STATION) gps = {at: [best.x.id], k: pts.indexOf(best.x), text: `En ${best.x.s[0]}`};
     else {
       let seg = null;
       for (let i = 0; i + 1 < pts.length; i++){
         const d = segDist(here, [pts[i].s[1], pts[i].s[2]], [pts[i+1].s[1], pts[i+1].s[2]]);
         if (!seg || d < seg.d) seg = {d, i};
       }
-      if (seg && seg.d < 3000) gps = {at: [pts[seg.i].id, pts[seg.i+1].id], text: `Entre ${pts[seg.i].s[0]} y ${pts[seg.i+1].s[0]}`};
+      if (seg && seg.d < 3000) gps = {at: [pts[seg.i].id, pts[seg.i+1].id], seg: seg.i, text: `Entre ${pts[seg.i].s[0]} y ${pts[seg.i+1].s[0]}`};
     }
   }
   if (!gps) return null;
   // ¿Coincide con la estación que da Renfe?
   const rep = v.stopId, ri = pts.findIndex(x => x.id === rep);
-  let agree = gps.at.includes(rep);
-  if (!agree && ri > 0 && gps.at.length === 1 && v.currentStatus !== 'STOPPED_AT' && pts[ri-1].id === gps.at[0]) agree = true;  // saliendo hacia la siguiente
-  const rs = stInfo(rep);
-  if (!agree && rs && rs[1] != null && distM(here[0], here[1], rs[1], rs[2]) < 700) agree = true;
+  // Se compara en el orden del recorrido: «hacia X» encaja si el GPS está antes de X (o en X);
+  // «parado en X» encaja si el GPS está en X o muy cerca.
+  let agree = true;
+  if (ri >= 0){
+    if (v.currentStatus === 'STOPPED_AT'){
+      const rs = pts[ri].s;
+      agree = gps.k === ri || distM(here[0], here[1], rs[1], rs[2]) < 700;
+    } else {
+      agree = gps.k === ri || gps.k === ri - 1 || gps.seg === ri - 1;
+    }
+  }
   // Antigüedad de la posición: la hora del GPS si Renfe la da; si no, cuánto lleva el punto sin moverse
   const now = Date.now(), t = m._track;
   let ageMin = null, measured = false;
@@ -594,8 +601,14 @@ function showRoute(m){
   const done = getComputedStyle(document.documentElement).getPropertyValue('--done').trim();
   const here = m.getLatLng();
   let idx = pts.findIndex(p => p.id === e.vehicle.stopId);
-  const stopped = e.vehicle.currentStatus === 'STOPPED_AT';
+  let stopped = e.vehicle.currentStatus === 'STOPPED_AT';
   const ll = p => [p.s[1], p.s[2]];
+  // Si la posición GPS es fiable, el tramo recorrido se corta donde está el punto del mapa
+  const chk = gpsCheck(m);
+  if (chk?.gps && !chk.stale){
+    if (chk.gps.k != null){ idx = chk.gps.k; stopped = true; }
+    else if (chk.gps.seg != null){ idx = chk.gps.seg + 1; stopped = false; }
+  }
   let past = [], ahead = pts.map(ll);
   if (idx >= 0){
     past = pts.slice(0, stopped ? idx+1 : idx).map(ll);
