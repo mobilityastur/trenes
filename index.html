@@ -64,7 +64,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ld);outline-off
 .sw.ld{background:var(--ld);border-radius:3px;transform:rotate(45deg)} .sw.cer{background:var(--cer);border-radius:50%}
 .searchrow{flex:1 1 100%;display:flex;gap:6px;min-width:0}
 .planbtn{flex:none;border:0;border-radius:10px;background:var(--ld);color:#14181f;font:600 14px var(--body);padding:0 12px;cursor:pointer}
-.search{flex:1 1 auto;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);
+.sbox{position:relative;flex:1 1 auto;min-width:0;display:flex}
+.sclear{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:0;
+  background:var(--line);color:var(--fg);font:600 15px/1 var(--body);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.search::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
+.search{flex:1 1 auto;min-width:0;padding:9px 42px 9px 12px;border-radius:10px;border:1px solid var(--line);
   background:transparent;color:var(--fg);font:500 16px var(--body)}
 .results{flex:1 1 100%;display:flex;flex-direction:column;gap:2px}
 .results button{display:flex;justify-content:space-between;gap:8px;text-align:left;border:0;border-radius:8px;
@@ -236,7 +240,10 @@ details.adv summary{cursor:pointer;color:var(--muted);font-size:13px}
   <button class="chip alerts" id="alertsBtn">⚠︎ <b id="nAl">–</b></button>
   <div class="results" id="results" hidden></div>
   <div class="searchrow">
-    <input class="search" id="q" type="search" placeholder="Tren, línea, destino o estación" aria-label="Buscar tren, línea, destino o estación" autocomplete="off">
+    <div class="sbox">
+      <input class="search" id="q" type="search" placeholder="Tren, línea, destino o estación" aria-label="Buscar tren, línea, destino o estación" autocomplete="off">
+      <button class="sclear" id="qClear" aria-label="Borrar búsqueda" hidden>✕</button>
+    </div>
     <button class="planbtn" id="planBtn">Cómo ir</button>
   </div>
 </div>
@@ -329,7 +336,7 @@ const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32'
   '62':'Santander','70':'Zaragoza'};
 
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
-const APP_VERSION = '1.12';
+const APP_VERSION = '1.13';
 const PROXY_DEFAULT = 'https://trenes.navamar2002.workers.dev/?url=';
 let proxy = store.get('proxy') || PROXY_DEFAULT;
 const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '0'};
@@ -1052,7 +1059,19 @@ $('fLd').onclick = () => { show.ld = !show.ld; store.set('show_ld', show.ld?'1':
 $('fCer').onclick = () => { show.cer = !show.cer; store.set('show_cer', show.cer?'1':'0'); applyFilters(); };
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 let searchT;
+function closeResults(){ $('results').hidden = true; $('q').blur(); }
+function clearSearch(){
+  clearTimeout(searchT);
+  $('q').value = ''; $('qClear').hidden = true; $('results').hidden = true; $('results').innerHTML = '';
+  $('q').blur(); refreshMarkersOnly();
+}
+$('qClear').addEventListener('click', clearSearch);
+$('q').addEventListener('keydown', ev => { if (ev.key === 'Escape') clearSearch(); });
+$('q').addEventListener('focus', () => { if ($('results').innerHTML && $('q').value.trim().length >= 3) $('results').hidden = false; });
+$('results').addEventListener('click', ev => { if (ev.target.closest('button')) closeResults(); });
+map.on('click dragstart', () => { if (!$('results').hidden || document.activeElement === $('q')) closeResults(); });
 $('q').addEventListener('input', () => {
+  $('qClear').hidden = !$('q').value;
   clearTimeout(searchT);
   searchT = setTimeout(() => {
     refreshMarkersOnly();
