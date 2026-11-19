@@ -1,6 +1,6 @@
 // Trenes en Vivo · service worker
 // Guarda la app para que abra rápido y funcione sin conexión (con los últimos datos guardados).
-const VERSION = 'trenes-1.14';
+const VERSION = 'trenes-1.15';
 const BASICOS = ['./', 'index.html', 'manifest.webmanifest', 'icono-180.png', 'icono-192.png', 'icono-512.png'];
 
 self.addEventListener('install', e => {
