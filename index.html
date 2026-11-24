@@ -336,7 +336,7 @@ const NUCLEOS = {'10':'Madrid','20':'Asturias','30':'Sevilla','31':'Cádiz','32'
   '62':'Santander','70':'Zaragoza'};
 
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
-const APP_VERSION = '1.17';
+const APP_VERSION = '1.18';
 const PROXY_DEFAULT = 'https://trenes.navamar2002.workers.dev/?url=';
 let proxy = store.get('proxy') || PROXY_DEFAULT;
 const show = {ld: store.get('show_ld') !== '0', cer: store.get('show_cer') !== '0'};
@@ -493,9 +493,9 @@ function gpsCheck(m){
     const gi = gps.k != null ? gps.k : gps.seg + 0.5, ei = est.k != null ? est.k : est.seg + 0.5;
     const rpos = ri < 0 ? null : (v.currentStatus === 'STOPPED_AT' ? ri : ri - 0.5);
     // El GPS, cuando falla, va por detrás. Si está a la altura de la estimación o por delante, manda el GPS;
-    // si la estimación va por delante (hasta 2 estaciones), manda la estimación.
-    est.match = gi === ei;
-    if (gi >= ei) primary = agree ? 'renfe' : 'gps';
+    // si la estimación va al menos una estación por delante (hasta 2), manda la estimación.
+    est.match = Math.abs(gi - ei) <= 0.5;
+    if (gi >= ei - 0.5) primary = agree ? 'renfe' : 'gps';   // media estación de diferencia es el margen normal al llegar o salir
     else if (Math.abs(ei - gi) <= 2 || (rpos != null && Math.abs(ei - rpos) <= 2)) primary = 'est';
     else est = null;                                                          // muy lejos de todo: retraso no fiable
   }
